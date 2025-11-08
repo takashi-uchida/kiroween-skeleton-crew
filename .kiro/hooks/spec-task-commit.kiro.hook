@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "name": "Spec Mode Task Commit",
-  "description": "Automatically commits changes when a task is completed in spec mode.\n",
+  "description": "Automatically commits changes when a task is completed in spec mode using GitHub MCP tools.\n",
   "version": "1",
   "when": {
     "type": "fileEdited",
@@ -18,6 +18,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "A task has been completed in spec mode. Review the changes made and create a git commit with an appropriate commit message following the format 'spirit(scope): spell description'. Analyze what was changed to determine the scope and write a clear description of what was accomplished."
+    "prompt": "A task has been completed in spec mode. Review the changes made and create a git commit using GitHub MCP tools (mcp_github_push_files or similar) with an appropriate commit message following the format 'spirit(scope): spell description'. Analyze what was changed to determine the scope and write a clear description of what was accomplished. Use MCP tools to perform the git operations."
   }
 }
