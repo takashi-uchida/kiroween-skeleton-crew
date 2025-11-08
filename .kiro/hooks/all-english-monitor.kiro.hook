@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "name": "All English Content Monitor",
+  "description": "Monitors all files to ensure English language content is properly formatted and maintained",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.md",
+      "**/*.txt",
+      "**/*.py",
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.html",
+      "**/*.css",
+      "**/*.json",
+      "**/*.yml",
+      "**/*.yaml"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the changed files and ensure all English language content (comments, documentation, strings, and text) follows proper English grammar, spelling, and conventions. Check for clarity, consistency, and readability. Suggest improvements where needed."
+  }
+}

@@ -1,11 +1,21 @@
 """Spirit exports."""
 
-from . import base_agent, frontend_agent, backend_agent, database_agent, devops_agent
+from .base_agent import BaseSpirit
+from .architect_agent import ArchitectSpirit
+from .scrum_master_agent import ScrumMasterSpirit
+from .frontend_agent import FrontendSpirit
+from .backend_agent import BackendSpirit
+from .database_agent import DatabaseSpirit
+from .qa_agent import QASpirit
+from .devops_agent import DevOpsSpirit
 
 __all__ = [
-    "base_agent",
-    "frontend_agent",
-    "backend_agent",
-    "database_agent",
-    "devops_agent",
+    "BaseSpirit",
+    "ArchitectSpirit",
+    "ScrumMasterSpirit",
+    "FrontendSpirit",
+    "BackendSpirit",
+    "DatabaseSpirit",
+    "QASpirit",
+    "DevOpsSpirit",
 ]

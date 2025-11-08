@@ -1,6 +1,6 @@
 """Spirit Protocol primitives."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict
 
@@ -12,4 +12,4 @@ class AgentMessage:
     workspace: str
     message_type: str
     payload: Dict
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = field(default_factory=datetime.utcnow)
