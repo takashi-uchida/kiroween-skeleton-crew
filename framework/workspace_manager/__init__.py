@@ -5,7 +5,7 @@ git operations, branch strategies, and state tracking for spec-driven developmen
 
 Two main workspace management approaches:
 - WorkspaceOrchestrator: Manages multiple isolated workspace directories for spec execution
-- SpiritWorkspaceManager: Handles branch naming and commit formatting for spirit agents
+- WorkspaceManager: Handles branch naming and commit formatting for spirit agents (alias for SpiritWorkspaceManager)
 """
 
 from .branch_strategy import BranchStrategy
@@ -23,14 +23,14 @@ from .state_tracker import StateTracker
 from .workspace import Workspace, WorkspaceError
 from .workspace_manager import (
     WorkspaceOrchestrator,
-    SpiritWorkspaceManager,
+    WorkspaceManager,
     WorkspaceManagerError
 )
 
 __all__ = [
     # Core orchestration classes
     'WorkspaceOrchestrator',
-    'SpiritWorkspaceManager',
+    'WorkspaceManager',
     'Workspace',
     
     # Utilities
