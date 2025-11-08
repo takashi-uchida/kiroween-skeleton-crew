@@ -1,0 +1,7 @@
+{
+  "base_path": ".",
+  "state_file": ".kiro/workspace-state.json",
+  "gitignore_path": ".gitignore",
+  "auto_push": true,
+  "auto_pr": false
+}

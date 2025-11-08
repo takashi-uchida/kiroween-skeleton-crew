@@ -14,7 +14,7 @@ from framework.agents.database_agent import DatabaseSpirit
 from framework.agents.qa_agent import QASpirit
 from framework.agents.devops_agent import DevOpsSpirit
 from framework.communication.message_bus import MessageBus
-from framework.workspace_manager.workspace_manager import WorkspaceManager
+from framework.workspace_manager import WorkspaceManager
 
 
 def test_architect_workload_tracking():

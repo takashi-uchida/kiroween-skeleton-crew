@@ -1,5 +1,58 @@
-"""Workspace management for NecroCode spirits."""
+"""Workspace management system for isolated spec task execution.
 
-from .workspace_manager import WorkspaceManager
+This package provides components for managing isolated workspace directories,
+git operations, branch strategies, and state tracking for spec-driven development.
 
-__all__ = ["WorkspaceManager"]
+Two main workspace management approaches:
+- WorkspaceOrchestrator: Manages multiple isolated workspace directories for spec execution
+- WorkspaceManager: Handles branch naming and commit formatting for spirit agents (alias for SpiritWorkspaceManager)
+"""
+
+from .branch_strategy import BranchStrategy
+from .config_manager import ConfigManager, ConfigValidationError
+from .git_operations import GitOperations, GitOperationError
+from .gitignore_manager import (
+    append_to_gitignore,
+    add_workspace_to_gitignore,
+    add_workspace_state_to_gitignore,
+    initialize_workspace_gitignore,
+    GitignoreManagerError
+)
+from .models import WorkspaceConfig, WorkspaceInfo
+from .state_tracker import StateTracker
+from .workspace import Workspace, WorkspaceError
+from .workspace_manager import (
+    WorkspaceOrchestrator,
+    WorkspaceManager,
+    WorkspaceManagerError
+)
+
+__all__ = [
+    # Core orchestration classes
+    'WorkspaceOrchestrator',
+    'WorkspaceManager',
+    'Workspace',
+    
+    # Utilities
+    'BranchStrategy',
+    'GitOperations',
+    'StateTracker',
+    'ConfigManager',
+    
+    # Data models
+    'WorkspaceConfig',
+    'WorkspaceInfo',
+    
+    # Gitignore utilities
+    'append_to_gitignore',
+    'add_workspace_to_gitignore',
+    'add_workspace_state_to_gitignore',
+    'initialize_workspace_gitignore',
+    
+    # Exceptions
+    'WorkspaceManagerError',
+    'WorkspaceError',
+    'GitOperationError',
+    'GitignoreManagerError',
+    'ConfigValidationError',
+]
