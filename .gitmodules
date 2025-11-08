@@ -1,0 +1,6 @@
+[submodule "workspace1"]
+	path = workspace1
+	url = https://github.com/takashi-uchida/necrocode-workspace1.git
+[submodule "workspace2"]
+	path = workspace2
+	url = https://github.com/takashi-uchida/necrocode-workspace2.git
