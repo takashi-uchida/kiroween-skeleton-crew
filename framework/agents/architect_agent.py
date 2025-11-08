@@ -1,9 +1,35 @@
 """Architect spirit - designs system architecture from the void."""
 
+from typing import Optional
 from .base_agent import BaseSpirit
 
 
 class ArchitectSpirit(BaseSpirit):
+    def __init__(self, *args, message_bus=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.message_bus = message_bus
+    
+    def receive_message(self, message) -> None:
+        """Handle incoming Spirit Protocol messages."""
+        if message.message_type == "task_assignment":
+            self._handle_task_assignment(message)
+        elif message.message_type == "task_completed":
+            self._handle_task_completion(message)
+    
+    def _handle_task_assignment(self, message) -> None:
+        """Process task assignment from Scrum Master."""
+        task_id = message.payload.get("task_id")
+        if task_id:
+            self.assign_task(task_id)
+            print(self.chant(f"Accepted design task: {task_id}"))
+    
+    def _handle_task_completion(self, message) -> None:
+        """Mark task as complete and notify Scrum Master."""
+        task_id = message.payload.get("task_id")
+        if task_id:
+            self.complete_task(task_id)
+            print(self.chant(f"Completed design task: {task_id}"))
+    
     def design_system(self, job_description: str) -> dict:
         """Analyze job description and create architecture blueprint."""
         return {
