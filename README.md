@@ -9,3 +9,112 @@ NecroCode summons a theme-aware squad of AI spirits from plain job descriptions.
 - `workspace2/` – IoT dashboard crypt.
 
 Each workspace is an independent Git repository managed by the Necromancer to keep every spirit focused on its craft.
+
+## Workspace Management
+
+The Workspace Manager enables Kiro to execute spec tasks in isolated environments. Each spec gets its own cloned repository, preventing conflicts when multiple specs are processed simultaneously.
+
+### Creating a Workspace
+
+```python
+from framework.workspace_manager import WorkspaceManager
+from pathlib import Path
+
+# Initialize the manager
+manager = WorkspaceManager(
+    base_path=Path("."),
+    state_file=Path(".kiro/workspace-state.json")
+)
+
+# Create a workspace for a spec
+workspace = manager.create_workspace(
+    spec_name="kiro-workspace-task-execution",
+    repo_url="https://github.com/user/repo.git"
+)
+```
+
+The workspace will be cloned into a directory named `workspace-{spec-name}` and automatically added to `.gitignore`.
+
+### Executing Tasks
+
+```python
+# Create a feature branch for a task
+branch_name = workspace.create_task_branch(
+    task_id="1.1",
+    task_description="implement workspace manager"
+)
+# Creates: feature/task-kiro-workspace-task-execution-1.1-implement-workspace-manager
+
+# Make your code changes...
+
+# Commit using Spirit Protocol format
+workspace.commit_task(
+    task_id="1.1",
+    scope="workspace",
+    description="summon workspace manager for isolated task execution",
+    files=[Path("framework/workspace_manager/workspace_manager.py")]
+)
+# Generates: spirit(workspace): summon workspace manager for isolated task execution
+
+# Push the feature branch
+workspace.push_branch(branch_name)
+```
+
+### Managing Workspaces
+
+```python
+# List all active workspaces
+workspaces = manager.list_workspaces()
+for ws in workspaces:
+    print(f"{ws.spec_name}: {ws.status} - {ws.current_branch}")
+
+# Get a specific workspace
+workspace = manager.get_workspace("kiro-workspace-task-execution")
+
+# Clean up when done
+manager.cleanup_workspace("kiro-workspace-task-execution")
+```
+
+### Branch Naming Convention
+
+Feature branches follow this pattern:
+```
+feature/task-{spec-id}-{task-number}-{description}
+```
+
+Examples:
+- `feature/task-kiro-workspace-task-execution-1.1-implement-workspace-manager`
+- `feature/task-auth-system-2.3-add-jwt-validation`
+- `feature/task-api-gateway-5.1-rate-limiting`
+
+Special characters in descriptions are automatically sanitized to ensure git compatibility.
+
+### Spirit Protocol Commit Format
+
+All commits follow the Spirit Protocol format:
+```
+spirit(scope): spell description
+
+Task: {task-id}
+```
+
+Examples:
+```
+spirit(workspace): summon workspace manager for isolated task execution
+
+Task: 1.1
+```
+
+```
+spirit(auth): cast protection spell on user credentials
+
+Task: 2.3
+```
+
+```
+spirit(api): weave rate limiting enchantment
+
+Task: 5.1
+```
+
+The scope should reflect the component or area being modified (e.g., `workspace`, `auth`, `api`, `frontend`, `database`).

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 import json
 
 
@@ -16,7 +16,7 @@ class WorkspaceConfig:
     auto_push: bool = True
     auto_pr: bool = False
     
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary with Path objects as strings."""
         return {
             "base_path": str(self.base_path),
@@ -27,7 +27,7 @@ class WorkspaceConfig:
         }
     
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkspaceConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> "WorkspaceConfig":
         """Create from dictionary with string paths."""
         return cls(
             base_path=Path(data["base_path"]),
@@ -47,10 +47,10 @@ class WorkspaceInfo:
     repo_url: str
     current_branch: str
     created_at: str
-    tasks_completed: list[str]
+    tasks_completed: List[str]
     status: str  # 'active', 'completed', 'error'
     
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "spec_name": self.spec_name,
@@ -63,7 +63,7 @@ class WorkspaceInfo:
         }
     
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkspaceInfo":
+    def from_dict(cls, data: Dict[str, Any]) -> "WorkspaceInfo":
         """Create from dictionary loaded from JSON."""
         return cls(
             spec_name=data["spec_name"],
