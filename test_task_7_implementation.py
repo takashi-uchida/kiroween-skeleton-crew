@@ -14,7 +14,7 @@ from framework.agents.database_agent import DatabaseSpirit
 from framework.agents.qa_agent import QASpirit
 from framework.agents.devops_agent import DevOpsSpirit
 from framework.communication.message_bus import MessageBus
-from framework.workspace_manager.workspace_manager import WorkspaceManager
+from framework.workspace_manager import SpiritWorkspaceManager
 
 
 def test_architect_workload_tracking():
@@ -63,7 +63,7 @@ def test_scrum_master_issue_creation():
 def test_development_spirits_workload():
     """Test development spirits have workload tracking and message handlers."""
     message_bus = MessageBus()
-    workspace_mgr = WorkspaceManager(".")
+    workspace_mgr = SpiritWorkspaceManager(".")
     
     # Test FrontendSpirit
     frontend = FrontendSpirit(
@@ -107,7 +107,7 @@ def test_development_spirits_workload():
 def test_qa_devops_spirits():
     """Test QA and DevOps spirits have workload tracking."""
     message_bus = MessageBus()
-    workspace_mgr = WorkspaceManager(".")
+    workspace_mgr = SpiritWorkspaceManager(".")
     
     # Test QASpirit
     qa = QASpirit(
@@ -145,7 +145,7 @@ def test_qa_devops_spirits():
 
 def test_branch_creation_integration():
     """Test spirits can create branches with new naming convention."""
-    workspace_mgr = WorkspaceManager(".")
+    workspace_mgr = SpiritWorkspaceManager(".")
     
     frontend = FrontendSpirit(
         role="frontend",

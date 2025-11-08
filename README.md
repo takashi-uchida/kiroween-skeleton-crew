@@ -17,20 +17,44 @@ The Workspace Manager enables Kiro to execute spec tasks in isolated environment
 ### Creating a Workspace
 
 ```python
-from framework.workspace_manager import WorkspaceManager
+from framework.workspace_manager import WorkspaceOrchestrator, WorkspaceConfig
 from pathlib import Path
 
-# Initialize the manager
-manager = WorkspaceManager(
+# Initialize the orchestrator with configuration
+config = WorkspaceConfig(
     base_path=Path("."),
-    state_file=Path(".kiro/workspace-state.json")
+    state_file=Path(".kiro/workspace-state.json"),
+    gitignore_path=Path(".gitignore")
 )
+orchestrator = WorkspaceOrchestrator(config)
 
 # Create a workspace for a spec
-workspace = manager.create_workspace(
+workspace = orchestrator.create_workspace(
     spec_name="kiro-workspace-task-execution",
     repo_url="https://github.com/user/repo.git"
 )
+```
+
+### Spirit Workspace Management
+
+```python
+from framework.workspace_manager import SpiritWorkspaceManager
+
+# Initialize spirit workspace manager
+spirit_mgr = SpiritWorkspaceManager(".")
+
+# Create branch for a spirit
+branch = spirit_mgr.create_branch("frontend_spirit_1", "login-ui", issue_id="42")
+# Returns: "frontend/issue-42-login-ui"
+
+# Format commit message
+commit_msg = spirit_mgr.format_commit_message(
+    "frontend_spirit_1", 
+    scope="ui", 
+    description="summon login form",
+    issue_id="42"
+)
+# Returns: "spirit-1(ui): summon login form [#42]"
 ```
 
 The workspace will be cloned into a directory named `workspace-{spec-name}` and automatically added to `.gitignore`.

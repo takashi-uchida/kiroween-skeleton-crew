@@ -8,11 +8,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from framework.workspace_manager import WorkspaceManager
+from framework.workspace_manager import SpiritWorkspaceManager
 
 
 def test_instance_based_branch_names_are_unique_for_multiple_agents(tmp_path):
-    manager = WorkspaceManager(tmp_path)
+    manager = SpiritWorkspaceManager(tmp_path)
 
     branch_one = manager.create_branch("frontend_spirit_1", "Login UI")
     branch_two = manager.create_branch("frontend_spirit_2", "Login UI")
@@ -23,7 +23,7 @@ def test_instance_based_branch_names_are_unique_for_multiple_agents(tmp_path):
 
 
 def test_issue_based_branch_names_override_instance_format(tmp_path):
-    manager = WorkspaceManager(tmp_path)
+    manager = SpiritWorkspaceManager(tmp_path)
 
     branch = manager.create_branch("backend_spirit_3", "Auth API", issue_id="77")
 
@@ -31,7 +31,7 @@ def test_issue_based_branch_names_override_instance_format(tmp_path):
 
 
 def test_commit_message_format_includes_instance_and_issue_reference(tmp_path):
-    manager = WorkspaceManager(tmp_path)
+    manager = SpiritWorkspaceManager(tmp_path)
 
     commit_with_issue = manager.format_commit_message(
         "backend_spirit_2", scope="api", description="Forged auth endpoints", issue_id="77"
@@ -45,7 +45,7 @@ def test_commit_message_format_includes_instance_and_issue_reference(tmp_path):
 
 
 def test_branch_tracking_is_per_spirit_instance(tmp_path):
-    manager = WorkspaceManager(tmp_path)
+    manager = SpiritWorkspaceManager(tmp_path)
     branch = manager.create_branch("qa_spirit_4", "Regression Suite")
 
     assert manager.get_active_branches("qa_spirit_4") == [branch]
@@ -53,7 +53,7 @@ def test_branch_tracking_is_per_spirit_instance(tmp_path):
 
 
 def test_invalid_spirit_identifier_raises_value_error(tmp_path):
-    manager = WorkspaceManager(tmp_path)
+    manager = SpiritWorkspaceManager(tmp_path)
 
     try:
         manager.create_branch("frontend", "feature")
