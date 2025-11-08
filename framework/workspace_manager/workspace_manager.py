@@ -73,7 +73,7 @@ class WorkspaceManager:
         parts = spirit_id.split("_")
         if len(parts) < 3 or parts[-2] != "spirit":
             raise ValueError(f"Invalid spirit identifier: {spirit_id}")
-        role = parts[0]
+        role = "_".join(parts[:-2])  # Join all parts except last two
         instance = parts[-1]
         return role, instance
 
