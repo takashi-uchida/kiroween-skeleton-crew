@@ -12,7 +12,7 @@ def _slugify(value: str) -> str:
     slug = value.strip().lower().replace(" ", "-")
     safe_chars = []
     for char in slug:
-        if char.isalnum() or char in {"-", "_", "/"}:
+        if char.isalnum() or char in {"-", "_"}:
             safe_chars.append(char)
         else:
             safe_chars.append("-")
