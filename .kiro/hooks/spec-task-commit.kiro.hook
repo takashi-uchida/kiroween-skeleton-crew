@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Spec Mode Task Commit",
+  "description": "Automatically commits changes when a task is completed in spec mode.\n",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/spec/**/*",
+      ".kiro/tasks/**/*",
+      "**/*.py",
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A task has been completed in spec mode. Review the changes made and create a git commit with an appropriate commit message following the format 'spirit(scope): spell description'. Analyze what was changed to determine the scope and write a clear description of what was accomplished."
+  }
+}

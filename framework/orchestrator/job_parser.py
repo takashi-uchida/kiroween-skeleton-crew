@@ -8,6 +8,7 @@ from typing import List
 class RoleRequest:
     name: str
     skills: List[str]
+    count: int = 1  # Number of agents to summon (default 1)
 
 
 class JobParser:

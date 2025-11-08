@@ -1,4 +1,4 @@
-"""Workspace management system for isolated spec task execution.
+"""Workspace management for NecroCode spirits."""
 
 This package provides components for managing isolated workspace directories,
 git operations, branch strategies, and state tracking for spec-driven development.
