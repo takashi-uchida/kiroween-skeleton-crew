@@ -84,6 +84,26 @@ workspace.commit_task(
 workspace.push_branch(branch_name)
 ```
 
+### Running Spec Tasks with Strands Agents
+
+NecroCode now integrates with **Strands Agents**, which default to OpenAI's `gpt-5`.
+
+```bash
+export OPENAI_API_KEY=sk-your-key
+```
+
+```python
+from framework.orchestrator.necromancer import Necromancer
+
+necromancer = Necromancer(workspace=".")
+results = necromancer.execute_spec_tasks("documentation-organization")
+for result in results:
+    print(result["task_id"], result["title"], "→", result["output"][:80], "...")
+```
+
+If you need to inject a stub client (e.g., for tests), use `strandsagents.SpecTaskRunner` with
+`strandsagents.StubLLMClient` and pass it to `Necromancer`.
+
 ### Managing Workspaces
 
 ```python

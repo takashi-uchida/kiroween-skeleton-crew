@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature enables Kiro to execute spec tasks in isolated workspace environments. When a user completes a spec's task list and begins execution, Kiro will clone the target repository into a workspace subdirectory, create feature branches for each task, and manage commits following the Spirit Protocol format. This allows multiple specs to be processed simultaneously without conflicts.
+This feature enables Kiro to execute spec tasks in isolated workspace environments using AI-powered agents. When a user completes a spec's task list and begins execution, Kiro will clone the target repository into a workspace subdirectory, use StrandsAgent with OpenAI LLMs to generate code implementations, create feature branches for each task, and manage commits following the Spirit Protocol format. This allows multiple specs to be processed simultaneously without conflicts while leveraging AI to automate the actual code generation.
 
 ## Glossary
 
@@ -12,6 +12,9 @@ This feature enables Kiro to execute spec tasks in isolated workspace environmen
 - **Spirit Protocol**: A commit message format following `spirit(scope): spell description` pattern
 - **Task**: A discrete implementation step from a spec's task list
 - **WorkspaceManager**: The system component that manages workspace lifecycle and git operations
+- **StrandsAgent**: An LLM-backed agent that executes spec tasks by generating code implementations
+- **SpecTaskRunner**: A component that parses tasks.md files and coordinates task execution through StrandsAgent
+- **OpenAIChatClient**: The LLM client that communicates with OpenAI's API for code generation
 
 ## Requirements
 
@@ -72,3 +75,51 @@ This feature enables Kiro to execute spec tasks in isolated workspace environmen
 3. WHEN creating a branch, THE WorkspaceManager SHALL verify the branch name doesn't already exist
 4. IF a git operation fails, THEN THE WorkspaceManager SHALL provide clear error messages and rollback options
 5. THE WorkspaceManager SHALL verify the working directory is clean before switching branches
+
+### Requirement 6
+
+**User Story:** As a developer, I want tasks to be executed using AI-powered agents, so that code implementations are generated automatically based on task descriptions
+
+#### Acceptance Criteria
+
+1. THE SpecTaskRunner SHALL parse tasks from the tasks.md file and extract task identifiers, titles, descriptions, and checklists
+2. WHEN a task is ready for execution, THE SpecTaskRunner SHALL create a StrandsTask object with the parsed task information
+3. THE StrandsAgent SHALL use OpenAIChatClient to generate code implementations based on the task description and checklist
+4. THE StrandsAgent SHALL use a default model of gpt-5-codex for code generation
+5. WHERE the user specifies a different model, THE SpecTaskRunner SHALL configure StrandsAgent with the specified model
+
+### Requirement 7
+
+**User Story:** As a developer, I want the AI agent to have appropriate context, so that generated code is relevant and follows project conventions
+
+#### Acceptance Criteria
+
+1. THE StrandsAgent SHALL include a system prompt that describes its role as a technical writer and engineer
+2. WHEN executing a task, THE StrandsAgent SHALL provide the task ID, title, description, and checklist to the LLM
+3. WHERE additional context is available, THE StrandsAgent SHALL include requirements and design documents in the prompt
+4. THE StrandsAgent SHALL request the LLM to produce a clear plan of action and verification steps
+5. THE StrandsAgent SHALL use a temperature of 0.2 for consistent and focused code generation
+
+### Requirement 8
+
+**User Story:** As a developer, I want task execution results to be captured, so that I can review what the AI agent produced
+
+#### Acceptance Criteria
+
+1. WHEN a task is executed, THE StrandsAgent SHALL return a result containing the task ID, title, and LLM output
+2. THE SpecTaskRunner SHALL collect results from all executed tasks
+3. THE SpecTaskRunner SHALL provide a method to retrieve execution results for review
+4. WHERE task execution fails, THE SpecTaskRunner SHALL capture error information and include it in the results
+5. THE SpecTaskRunner SHALL log task execution progress for monitoring
+
+### Requirement 9
+
+**User Story:** As a developer, I want to configure the OpenAI API connection, so that the system can authenticate and communicate with the LLM service
+
+#### Acceptance Criteria
+
+1. THE OpenAIChatClient SHALL read the API key from the OPENAI_API_KEY environment variable
+2. IF the API key is not set, THEN THE OpenAIChatClient SHALL raise a clear error message instructing the user to set the environment variable
+3. THE OpenAIChatClient SHALL use the OpenAI API base URL https://api.openai.com/v1 by default
+4. WHERE a custom API base URL is provided, THE OpenAIChatClient SHALL use the custom URL
+5. THE OpenAIChatClient SHALL set a timeout of 60 seconds for API requests to prevent indefinite hanging

@@ -2,27 +2,35 @@
 
 ## Overview
 
-This design implements a workspace management system that enables Kiro to execute spec tasks in isolated git repositories. The system clones target repositories into workspace subdirectories, manages feature branches per task, and enforces the Spirit Protocol commit format. This architecture supports concurrent execution of multiple specs without conflicts.
+This design implements a workspace management system that enables Kiro to execute spec tasks in isolated git repositories using AI-powered agents. The system integrates the strandsagents library to leverage OpenAI LLMs for code generation, clones target repositories into workspace subdirectories, manages feature branches per task, and enforces the Spirit Protocol commit format. This architecture supports concurrent execution of multiple specs without conflicts while automating code implementation through AI.
 
 ## Architecture
 
 ### Component Hierarchy
 
 ```
-WorkspaceManager (orchestrator)
-├── WorkspaceConfig (configuration)
-├── GitOperations (existing, enhanced)
-├── BranchStrategy (naming & lifecycle)
-└── StateTracker (persistence)
+TaskExecutionOrchestrator (top-level coordinator)
+├── SpecTaskRunner (task parsing & execution)
+│   ├── StrandsAgent (AI-powered code generation)
+│   │   └── OpenAIChatClient (LLM communication)
+│   └── Task Parser (tasks.md parsing)
+├── WorkspaceManager (workspace lifecycle)
+│   ├── WorkspaceConfig (configuration)
+│   ├── GitOperations (existing, enhanced)
+│   ├── BranchStrategy (naming & lifecycle)
+│   └── StateTracker (persistence)
+└── Integration Layer (connects agents to workspace)
 ```
 
 ### Key Design Decisions
 
-1. **Workspace Isolation**: Each spec gets its own cloned repository to prevent conflicts
-2. **State Persistence**: JSON-based state file for tracking workspaces across sessions
-3. **Branch Naming Convention**: `feature/task-{spec-id}-{task-number}-{description}` for clarity
-4. **Single Responsibility**: Separate classes for git ops, branch management, and state tracking
-5. **Existing Integration**: Enhance existing `GitOperations` class rather than replacing it
+1. **AI-Powered Execution**: Use StrandsAgent with OpenAI LLMs for automated code generation
+2. **Workspace Isolation**: Each spec gets its own cloned repository to prevent conflicts
+3. **State Persistence**: JSON-based state file for tracking workspaces across sessions
+4. **Branch Naming Convention**: `feature/task-{spec-id}-{task-number}-{description}` for clarity
+5. **Single Responsibility**: Separate classes for git ops, branch management, state tracking, and AI execution
+6. **Existing Integration**: Enhance existing `GitOperations` class and integrate strandsagents library
+7. **Default LLM Model**: Use gpt-5-codex medium as the default model for reliable code generation
 
 ## Components and Interfaces
 
@@ -151,6 +159,111 @@ class WorkspaceInfo:
     status: str  # 'active', 'completed', 'error'
 ```
 
+### SpecTaskRunner
+
+Parses tasks from tasks.md and executes them via StrandsAgent.
+
+```python
+class SpecTaskRunner:
+    def __init__(
+        self,
+        agent: StrandsAgent | None = None,
+        model: str = "gpt-5-codex",
+        llm_client: OpenAIChatClient | None = None,
+    ):
+        """Initialize with optional custom agent or model."""
+        
+    def load_tasks(self, tasks_path: Path) -> list[SpecTask]:
+        """Parse tasks.md file and extract task information."""
+        
+    def run(self, tasks_path: Path) -> list[dict]:
+        """Execute all tasks from tasks.md file."""
+        
+    def run_single_task(self, task: SpecTask, context: dict | None = None) -> dict:
+        """Execute a single task with optional context."""
+```
+
+### StrandsAgent
+
+LLM-backed agent that generates code implementations.
+
+```python
+class StrandsAgent:
+    def __init__(
+        self,
+        name: str,
+        system_prompt: str | None = None,
+        model: str = "gpt-5-codex",
+        llm_client: OpenAIChatClient | None = None,
+        temperature: float = 0.2,
+        max_tokens: int = 900,
+    ):
+        """Initialize agent with LLM configuration."""
+        
+    def run_task(self, task: StrandsTask, context: dict | None = None) -> dict:
+        """Execute task via LLM and return generated implementation."""
+        
+    def _render_prompt(self, task: StrandsTask, context: dict) -> str:
+        """Format task information into LLM prompt."""
+```
+
+### OpenAIChatClient
+
+Handles communication with OpenAI API.
+
+```python
+class OpenAIChatClient:
+    def __init__(
+        self,
+        model: str = "gpt-5-codex",
+        api_key: str | None = None,
+        api_base: str = "https://api.openai.com/v1",
+        timeout: int = 60,
+    ):
+        """Initialize with API configuration."""
+        
+    def complete(
+        self,
+        messages: list[dict],
+        temperature: float = 0.2,
+        max_tokens: int = 800,
+    ) -> str:
+        """Send messages to OpenAI and return completion."""
+```
+
+### TaskExecutionOrchestrator
+
+Coordinates task execution with workspace management.
+
+```python
+class TaskExecutionOrchestrator:
+    def __init__(
+        self,
+        workspace_manager: WorkspaceManager,
+        spec_task_runner: SpecTaskRunner,
+    ):
+        """Initialize with workspace manager and task runner."""
+        
+    def execute_task(
+        self,
+        spec_name: str,
+        task_id: str,
+        tasks_path: Path,
+        requirements_path: Path | None = None,
+        design_path: Path | None = None,
+    ) -> dict:
+        """Execute a single task: parse → generate code → commit → push."""
+        
+    def execute_all_tasks(
+        self,
+        spec_name: str,
+        tasks_path: Path,
+        requirements_path: Path | None = None,
+        design_path: Path | None = None,
+    ) -> list[dict]:
+        """Execute all tasks from a spec sequentially."""
+```
+
 ## Data Models
 
 ### State File Format (JSON)
@@ -203,6 +316,27 @@ workspace-*/
 - Fallback to empty state if corrupted
 - Log corruption events for debugging
 
+### OpenAI API Failures
+- Check for OPENAI_API_KEY environment variable before execution
+- Provide clear error message if API key is missing
+- Handle HTTP errors (rate limits, authentication failures, timeouts)
+- Retry with exponential backoff for transient failures
+- Log API errors with request details for debugging
+
+### Task Parsing Failures
+- Validate tasks.md format before parsing
+- Handle malformed task entries gracefully
+- Provide line numbers for parsing errors
+- Skip invalid tasks and continue with valid ones
+- Log parsing warnings for user review
+
+### Code Generation Failures
+- Validate LLM output before writing to files
+- Handle incomplete or malformed code responses
+- Provide option to retry with different prompt
+- Save failed attempts for debugging
+- Allow manual intervention when AI generation fails
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -244,6 +378,9 @@ workspace-*/
 - Sample state JSON files
 - Test workspace directories (auto-cleaned)
 - Mock GitOperations for unit tests
+- Mock OpenAIChatClient (StubLLMClient) for testing without API calls
+- Sample tasks.md files with various task formats
+- Sample requirements.md and design.md for context testing
 
 ## Implementation Notes
 
@@ -277,12 +414,37 @@ When a user clicks "Start task" in the tasks.md file:
 
 1. Kiro checks if workspace exists for this spec
 2. If not, prompts for repository URL and creates workspace
-3. Creates feature branch for the task
-4. Executes task implementation
-5. Commits changes with Spirit Protocol format
-6. Pushes branch and optionally creates PR
-7. Updates task checkbox in tasks.md
-8. Updates state file
+3. TaskExecutionOrchestrator loads task from tasks.md via SpecTaskRunner
+4. Creates feature branch for the task via WorkspaceManager
+5. Loads requirements.md and design.md as context (if available)
+6. StrandsAgent generates code implementation via OpenAI LLM
+7. Generated code is written to workspace files
+8. Commits changes with Spirit Protocol format via WorkspaceManager
+9. Pushes branch and optionally creates PR
+10. Updates task checkbox in tasks.md
+11. Updates state file with task completion
+
+### AI Agent Context Building
+
+To ensure high-quality code generation, the system provides rich context to the LLM:
+
+```python
+context = {
+    "task_id": "1.1",
+    "task_title": "Implement WorkspaceManager",
+    "description": "Create main orchestrator for workspace lifecycle...",
+    "checklist": ["Initialize with base directory", "Implement create_workspace", ...],
+    "requirements": "Content from requirements.md",
+    "design": "Content from design.md",
+    "existing_code": "Relevant existing code from workspace",
+}
+```
+
+The StrandsAgent formats this into a comprehensive prompt that includes:
+- System role definition (technical writer and engineer)
+- Task objectives and acceptance criteria
+- Design constraints and patterns
+- Request for clear plan and verification steps
 
 ### Configuration Location
 
@@ -298,6 +460,36 @@ Workspace configuration will be stored in `.kiro/workspace-config.json`:
 }
 ```
 
+## Data Flow
+
+### Task Execution Flow
+
+```
+User clicks "Start task" in tasks.md
+    ↓
+TaskExecutionOrchestrator.execute_task()
+    ↓
+SpecTaskRunner.load_tasks() → Parse tasks.md
+    ↓
+Load context (requirements.md, design.md)
+    ↓
+WorkspaceManager.create_task_branch() → Create feature branch
+    ↓
+StrandsAgent.run_task() → Generate code via OpenAI
+    ↓
+OpenAIChatClient.complete() → Call OpenAI API
+    ↓
+Write generated code to workspace files
+    ↓
+WorkspaceManager.commit_task() → Commit with Spirit Protocol
+    ↓
+WorkspaceManager.push_branch() → Push to remote
+    ↓
+StateTracker.update_task_status() → Update state file
+    ↓
+Return execution result to user
+```
+
 ## Future Enhancements
 
 1. **PR Template Integration**: Auto-generate PR descriptions from task details
@@ -305,3 +497,8 @@ Workspace configuration will be stored in `.kiro/workspace-config.json`:
 3. **Workspace Templates**: Pre-configured workspace setups for common project types
 4. **Conflict Resolution**: Interactive merge conflict resolution
 5. **Workspace Sharing**: Export/import workspace state for team collaboration
+6. **Multi-Model Support**: Allow switching between different LLM providers (Anthropic, local models)
+7. **Incremental Context**: Load only relevant code files instead of entire codebase
+8. **Code Review Agent**: Separate agent for reviewing generated code before commit
+9. **Test Generation**: Automatically generate tests for implemented code
+10. **Rollback Support**: Undo task execution and restore previous state

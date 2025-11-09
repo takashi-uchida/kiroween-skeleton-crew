@@ -1,7 +1,8 @@
 """The Necromancer - master orchestrator that summons and coordinates all spirits."""
 
 import logging
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, Optional
 from framework.agents import (
     ArchitectSpirit,
     ScrumMasterSpirit,
@@ -17,6 +18,7 @@ from framework.communication.message_bus import MessageBus
 from framework.orchestrator.issue_router import IssueRouter
 from framework.orchestrator.workload_monitor import WorkloadMonitor
 from framework.orchestrator.job_parser import RoleRequest
+from strandsagents import SpecTaskRunner
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -25,7 +27,11 @@ logger = logging.getLogger(__name__)
 class Necromancer:
     """The master summoner who orchestrates the entire development ritual."""
     
-    def __init__(self, workspace: str = "workspace1"):
+    def __init__(
+        self,
+        workspace: str = "workspace1",
+        spec_task_runner: Optional[SpecTaskRunner] = None,
+    ):
         self.workspace = workspace
         self.message_bus = MessageBus()
         self.issue_router = IssueRouter(self.message_bus)
@@ -33,6 +39,7 @@ class Necromancer:
         self.spirits = {}
         self.architecture = None
         self.sprint = None
+        self.spec_task_runner = spec_task_runner or SpecTaskRunner()
         
     def summon_team(self, job_description: str, role_requests: List[RoleRequest] = None) -> Dict:
         """Main entry point: summon a complete development team.
@@ -100,6 +107,28 @@ class Necromancer:
             "sprint": self.sprint,
             "stories": stories,
         }
+
+    def execute_spec_tasks(
+        self,
+        spec_name: str,
+        specs_root: Optional[Path] = None,
+        tasks_filename: str = "tasks.md",
+    ) -> List[dict]:
+        """Run .kiro spec tasks through Strands Agents by default.
+
+        Args:
+            spec_name: Name of the spec folder inside .kiro/specs
+            specs_root: Base directory that contains .kiro/specs (defaults to repo root)
+            tasks_filename: Markdown file describing the tasks (defaults to tasks.md)
+
+        Returns:
+            List of Strands agent outputs per task.
+        """
+
+        base = Path(specs_root or Path.cwd())
+        tasks_path = base / ".kiro" / "specs" / spec_name / tasks_filename
+        logger.info("Executing spec tasks via Strands Agents: %s", tasks_path)
+        return self.spec_task_runner.run(tasks_path)
     
     def _summon_from_requests(self, role_requests: List[RoleRequest]) -> None:
         """Summon spirits based on role requests with instance counts.
