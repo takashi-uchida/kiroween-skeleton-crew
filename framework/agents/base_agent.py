@@ -29,6 +29,8 @@ class BaseSpirit:
         """Mark task as complete and move to completed list."""
         if task_id in self.current_tasks:
             self.current_tasks.remove(task_id)
+        # Allow recording completions even if the task is no longer active
+        if task_id not in self.completed_tasks:
             self.completed_tasks.append(task_id)
 
     def get_workload(self) -> int:

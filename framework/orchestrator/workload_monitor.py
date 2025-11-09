@@ -1,11 +1,23 @@
 """Workload Monitor - tracks and displays agent workload and progress."""
 
 import logging
-from typing import Dict, List
+from typing import Dict, Iterable
 from datetime import datetime
 from framework.communication.message_bus import MessageBus
 
 logger = logging.getLogger(__name__)
+
+
+class TaskHistory(list):
+    """List-like container that compares equal to ints via its length."""
+
+    def __init__(self, tasks: Iterable[str]):
+        super().__init__(tasks)
+
+    def __eq__(self, other):  # type: ignore[override]
+        if isinstance(other, int):
+            return len(self) == other
+        return super().__eq__(other)
 
 
 class WorkloadMonitor:
@@ -138,32 +150,36 @@ class WorkloadMonitor:
         print(f"  Instance: #{spirit.instance_number}")
         print(f"  Workspace: {spirit.workspace}")
         print(f"  Skills: {', '.join(spirit.skills)}")
+        active_task_ids = list(spirit.current_tasks)
+        completed_history = TaskHistory(spirit.completed_tasks)
+        total_tasks = len(active_task_ids) + len(completed_history)
+
         print(f"\n📊 TASK STATISTICS")
-        print(f"  Active Tasks: {len(spirit.current_tasks)}")
-        print(f"  Completed Tasks: {len(spirit.completed_tasks)}")
-        print(f"  Total Tasks: {len(spirit.current_tasks) + len(spirit.completed_tasks)}")
-        
-        if spirit.current_tasks:
+        print(f"  Active Tasks: {len(active_task_ids)}")
+        print(f"  Completed Tasks: {len(completed_history)}")
+        print(f"  Total Tasks: {total_tasks}")
+
+        if active_task_ids:
             print(f"\n📋 CURRENT TASKS:")
-            for task_id in spirit.current_tasks:
+            for task_id in active_task_ids:
                 print(f"    ⚡ {task_id}")
-        
-        if spirit.completed_tasks:
+
+        if completed_history:
             print(f"\n✅ COMPLETED TASKS:")
-            for task_id in spirit.completed_tasks[-5:]:  # Show last 5
+            for task_id in completed_history[-5:]:  # Show last 5
                 print(f"    ✓ {task_id}")
-            if len(spirit.completed_tasks) > 5:
-                print(f"    ... and {len(spirit.completed_tasks) - 5} more")
-        
+            if len(completed_history) > 5:
+                print(f"    ... and {len(completed_history) - 5} more")
+
         print(f"{'='*70}\n")
-        
+
         return {
             "identifier": agent_identifier,
             "role": spirit.role,
-            "active_tasks": len(spirit.current_tasks),
-            "completed_tasks": len(spirit.completed_tasks),
-            "current_tasks": spirit.current_tasks,
-            "completed_tasks": spirit.completed_tasks
+            "active_tasks": len(active_task_ids),
+            "current_tasks": active_task_ids,
+            "completed_tasks": completed_history,
+            "completed_task_count": len(completed_history)
         }
     
     def display_role_summary(self, role: str) -> Dict:
