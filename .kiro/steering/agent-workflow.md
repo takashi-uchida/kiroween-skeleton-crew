@@ -145,6 +145,7 @@ necromancer.banish_spirits()
 "Design database schema" → Database Spirit
 "Write unit tests" → QA Spirit
 "Setup Docker" → DevOps Spirit
+"Reorganize documentation" → Documentation Spirit
 ```
 
 **Load Balancing**:
@@ -234,6 +235,24 @@ Backend Spirit 2: Tasks 1.2, 1.4, 1.6
 - GitHub Actions, Jenkins
 - AWS, GCP, Azure
 - Terraform, Ansible
+
+### 📚 Documentation Spirit
+**Purpose**: Documentation organization and technical writing
+
+**Responsibilities**:
+- Reorganize documentation structure
+- Eliminate duplicate content
+- Add cross-references between documents
+- Validate terminology consistency
+- Create documentation plans
+- Extract and merge content sections
+- Maintain steering documents
+
+**Technologies**:
+- Markdown
+- Technical writing best practices
+- Content organization patterns
+- Cross-referencing strategies
 
 ## Communication Protocol
 

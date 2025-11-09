@@ -8,6 +8,7 @@ from .backend_agent import BackendSpirit
 from .database_agent import DatabaseSpirit
 from .qa_agent import QASpirit
 from .devops_agent import DevOpsSpirit
+from .documentation_agent import DocumentationSpirit
 
 __all__ = [
     "BaseSpirit",
@@ -18,4 +19,5 @@ __all__ = [
     "DatabaseSpirit",
     "QASpirit",
     "DevOpsSpirit",
+    "DocumentationSpirit",
 ]

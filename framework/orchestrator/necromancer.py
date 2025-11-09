@@ -10,6 +10,7 @@ from framework.agents import (
     DatabaseSpirit,
     QASpirit,
     DevOpsSpirit,
+    DocumentationSpirit,
 )
 from framework.communication.protocol import AgentMessage
 from framework.communication.message_bus import MessageBus
@@ -112,6 +113,7 @@ class Necromancer:
             "frontend": FrontendSpirit,
             "qa": QASpirit,
             "devops": DevOpsSpirit,
+            "documentation": DocumentationSpirit,
         }
         
         for request in role_requests:
@@ -145,6 +147,8 @@ class Necromancer:
                     print(f"   {test_strategy['chant']}")
                 elif request.name == "devops":
                     print(f"   {spirit.chant('Preparing the deployment catacombs...')}")
+                elif request.name == "documentation":
+                    print(f"   {spirit.summon_documentation()}")
     
     def _summon_default_team(self) -> None:
         """Summon default single-instance team (legacy behavior)."""

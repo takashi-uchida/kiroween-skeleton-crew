@@ -142,3 +142,75 @@ Task: 5.1
 ```
 
 The scope should reflect the component or area being modified (e.g., `workspace`, `auth`, `api`, `frontend`, `database`).
+
+## Available Spirits
+
+NecroCode includes the following specialized spirits:
+
+- **🧙 Architect Spirit**: Designs system architecture and creates specifications
+- **📋 Scrum Master Spirit**: Manages tasks and coordinates sprint execution
+- **💻 Frontend Spirit**: Implements user interfaces and client-side logic
+- **⚙️ Backend Spirit**: Develops server-side APIs and business logic
+- **🗄️ Database Spirit**: Designs schemas and manages data persistence
+- **🧪 QA Spirit**: Writes tests and ensures quality
+- **🚀 DevOps Spirit**: Handles deployment and infrastructure
+- **📚 Documentation Spirit**: Organizes documentation and maintains technical writing
+
+### Documentation Spirit
+
+The Documentation Spirit specializes in organizing and maintaining project documentation:
+
+```python
+from framework.agents import DocumentationSpirit
+
+# Create documentation spirit
+doc_spirit = DocumentationSpirit(
+    role="documentation",
+    skills=["technical_writing", "content_organization"],
+    workspace="necrocode",
+    instance_number=1
+)
+
+# Create documentation plan
+requirements = {
+    'eliminate_redundancy': True,
+    'create_hierarchy': True,
+    'consolidate_specs': True,
+    'improve_navigation': True
+}
+plan = doc_spirit.create_documentation_plan(requirements)
+
+# Consolidate duplicate content
+sections = [
+    {'title': 'Section 1', 'content': 'Content A'},
+    {'title': 'Section 2', 'content': 'Content A'},  # Duplicate
+]
+result = doc_spirit.consolidate_content(sections)
+
+# Add cross-references
+docs = {
+    'overview.md': 'Product overview content',
+    'architecture.md': 'Technical architecture content'
+}
+cross_refs = doc_spirit.add_cross_references(docs)
+```
+
+The Documentation Spirit automatically routes tasks containing keywords like:
+- `documentation`, `doc`, `readme`, `guide`, `markdown`
+- `reorganize`, `consolidate`, `cross-reference`
+- `ドキュメント`, `文書`, `整理`, `統合`
+
+## Testing
+
+Run the test suite to verify all spirits are working correctly:
+
+```bash
+# Test DocumentationSpirit integration
+python3 test_documentation_spirit.py
+
+# Test multi-agent coordination
+python3 demo_multi_agent.py
+
+# Test logging and monitoring
+python3 test_logging_monitoring.py
+```

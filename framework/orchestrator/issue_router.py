@@ -48,6 +48,14 @@ class IssueRouter:
             'アーキテクチャ', 'pattern', 'structure',
             'scalability', 'performance', 'システム設計',
             'technical design', 'system design'
+        ],
+        'documentation': [
+            'doc', 'documentation', 'readme', 'guide', 'markdown',
+            'ドキュメント', '文書', 'steering', 'reorganize',
+            'consolidate', 'cross-reference', '整理', '統合',
+            'manual', 'tutorial', 'reference', 'マニュアル',
+            'eliminate redundancy', 'hierarchy', 'navigation',
+            '重複', 'クロスリファレンス', 'technical writing'
         ]
     }
     

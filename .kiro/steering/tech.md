@@ -87,6 +87,7 @@ Examples:
 - Specialized implementations per role
 - Task execution capabilities
 - Branch and commit management
+- Documentation spirit for content organization
 
 ## Data Models
 
@@ -127,6 +128,7 @@ necrocode/
 │   │   ├── base_agent.py           # Base spirit class
 │   │   ├── architect_agent.py      # Spec generation
 │   │   ├── scrum_master_agent.py   # Task breakdown
+│   │   ├── documentation_agent.py  # Documentation organization
 │   │   └── [role]_agent.py         # Specialized spirits
 │   ├── workspace_manager/
 │   │   ├── workspace_manager.py    # Workspace orchestration
