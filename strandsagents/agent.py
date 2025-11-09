@@ -27,7 +27,7 @@ class StrandsAgent:
         system_prompt: str | None = None,
         model: str = "gpt-5",
         llm_client: Optional[Any] = None,
-        temperature: float = 0.2,
+        temperature: float | None = None,
         max_tokens: int = 900,
     ) -> None:
         self.name = name
