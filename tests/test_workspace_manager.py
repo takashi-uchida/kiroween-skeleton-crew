@@ -193,7 +193,7 @@ def test_end_to_end_workflow_create_branch_commit_push(mock_git_repo, workspace_
         capture_output=True,
         text=True
     )
-    assert "spirit(feature): implement test feature" in result.stdout
+    assert "spirit(feature): spell implement test feature" in result.stdout
     
     # Verify working directory is clean after commit
     assert workspace.is_clean()

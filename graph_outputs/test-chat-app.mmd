@@ -1,0 +1,24 @@
+graph TD
+    task_1_1["1.1: Setup database schema"]
+    class task_1_1 ready
+    task_1_2["1.2: Implement JWT authentication"]
+    class task_1_2 blocked
+    task_2_1["2.1: Create login UI"]
+    class task_2_1 blocked
+    task_2_2["2.2: Create chat interface"]
+    class task_2_2 blocked
+    task_3_1["3.1: Write unit tests"]
+    class task_3_1 optional
+
+    task_1_1 --> task_1_2
+    task_1_2 --> task_2_1
+    task_1_1 --> task_2_2
+    task_1_2 --> task_3_1
+    task_2_1 --> task_3_1
+
+    classDef ready fill:#90EE90,stroke:#333,stroke-width:2px
+    classDef running fill:#FFD700,stroke:#333,stroke-width:2px
+    classDef blocked fill:#D3D3D3,stroke:#333,stroke-width:2px
+    classDef done fill:#87CEEB,stroke:#333,stroke-width:2px
+    classDef failed fill:#FF6B6B,stroke:#333,stroke-width:2px
+    classDef optional fill:#FFF,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5

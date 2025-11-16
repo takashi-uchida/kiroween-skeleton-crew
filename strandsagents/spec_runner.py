@@ -33,6 +33,8 @@ class SpecTaskRunner:
         model: str = "gpt-5",
         llm_client: Optional[Any] = None,
     ) -> None:
+        if llm_client is not None and model:
+            setattr(llm_client, "model", model)
         self.agent = agent or StrandsAgent(
             name="SpecStrandsAgent",
             model=model,
@@ -71,7 +73,8 @@ class SpecTaskRunner:
             header_match = TASK_HEADER.match(line)
             if header_match:
                 flush_current()
-                current_id = header_match.group("id")
+                identifier = header_match.group("id").rstrip(".")
+                current_id = identifier
                 current_title = header_match.group("title")
                 continue
 

@@ -14,11 +14,11 @@ class BranchStrategy:
     # Pattern for feature branch names
     BRANCH_PREFIX = "feature/task"
     BRANCH_PATTERN = re.compile(
-        r"^feature/task-(?P<spec_id>[^-]+)-(?P<task_number>[^-]+)-(?P<description>.+)$"
+        r"^feature/task-(?P<spec_id>.+)-(?P<task_number>\d+(?:\.\d+)*)-(?P<description>.+)$"
     )
 
     # Invalid characters for git branch names
-    INVALID_CHARS = re.compile(r"[^a-zA-Z0-9\-_/]")
+    INVALID_CHARS = re.compile(r"[^a-zA-Z0-9\-_/\.]")
     MULTIPLE_HYPHENS = re.compile(r"-+")
 
     @staticmethod
@@ -41,7 +41,7 @@ class BranchStrategy:
         """
         # Sanitize each component
         clean_spec_id = BranchStrategy._sanitize_component(spec_id)
-        clean_task_number = BranchStrategy._sanitize_component(task_number)
+        clean_task_number = BranchStrategy._sanitize_task_number(task_number)
         clean_description = BranchStrategy._sanitize_component(description)
 
         # Build branch name
@@ -71,6 +71,17 @@ class BranchStrategy:
         component = component.strip("-")
 
         return component
+
+    @staticmethod
+    def _sanitize_task_number(task_number: str) -> str:
+        """Sanitize task numbers while preserving decimal notation."""
+        # Keep digits and dots, remove everything else
+        cleaned = re.sub(r"[^0-9\.]", "", task_number)
+        # Collapse consecutive dots
+        cleaned = re.sub(r"\.+", ".", cleaned)
+        # Strip leading/trailing dots
+        cleaned = cleaned.strip(".")
+        return cleaned
 
     @staticmethod
     def sanitize_branch_name(name: str) -> str:

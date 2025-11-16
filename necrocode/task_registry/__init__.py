@@ -21,6 +21,13 @@ from necrocode.task_registry.exceptions import (
     SyncError,
 )
 from necrocode.task_registry.config import RegistryConfig
+from necrocode.task_registry.task_store import TaskStore
+from necrocode.task_registry.event_store import EventStore
+from necrocode.task_registry.kiro_sync import KiroSyncManager, TaskDefinition, SyncResult
+from necrocode.task_registry.lock_manager import LockManager
+from necrocode.task_registry.query_engine import QueryEngine
+from necrocode.task_registry.graph_visualizer import GraphVisualizer
+from necrocode.task_registry.task_registry import TaskRegistry
 
 __all__ = [
     "Taskset",
@@ -38,4 +45,13 @@ __all__ = [
     "LockTimeoutError",
     "SyncError",
     "RegistryConfig",
+    "TaskStore",
+    "EventStore",
+    "KiroSyncManager",
+    "TaskDefinition",
+    "SyncResult",
+    "LockManager",
+    "QueryEngine",
+    "GraphVisualizer",
+    "TaskRegistry",
 ]
