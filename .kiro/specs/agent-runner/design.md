@@ -72,11 +72,26 @@ class RunnerOrchestrator:
         self.config = config
         self.runner_id = self._generate_runner_id()
         self.state = RunnerState.IDLE
+        
+        # A2Aプロトコルの初期化
+        self.message_bus = MessageBus(config.message_bus_config)
+        self.agent_registry = AgentRegistry(config.registry_storage)
+        self.a2a_client = A2AClient(
+            agent_id=self.runner_id,
+            capabilities=config.capabilities,
+            message_bus=self.message_bus,
+            agent_registry=self.agent_registry
+        )
+        
+        # コンポーネントの初期化（A2Aクライアントを渡す）
         self.workspace_manager = WorkspaceManager()
-        self.task_executor = TaskExecutor()
+        self.task_executor = TaskExecutor(self.a2a_client)
         self.test_runner = TestRunner()
         self.artifact_uploader = ArtifactUploader()
         self.playbook_engine = PlaybookEngine()
+        
+        # A2Aメッセージハンドラーを登録
+        self._register_a2a_handlers()
     
     def run(self, task_context: TaskContext) -> RunnerResult:
         """タスクを実行"""
@@ -203,14 +218,17 @@ class WorkspaceManager:
 
 ### 3. TaskExecutor (Task Implementation)
 
-タスクの実装を実行します。
+タスクの実装を実行します。A2Aプロトコルを使用して他のエージェントと協調します。
 
 ```python
 class TaskExecutor:
     """タスクの実装"""
     
-    def __init__(self):
+    def __init__(self, a2a_client: A2AClient):
         self.kiro_client = KiroClient()
+        self.a2a_client = a2a_client
+        self.code_review_collab = CodeReviewCollaboration(a2a_client)
+        self.pair_programming_collab = PairProgrammingCollaboration(a2a_client)
     
     def execute(
         self,
@@ -219,24 +237,46 @@ class TaskExecutor:
     ) -> ImplementationResult:
         """タスクを実装"""
         try:
-            # 1. タスクコンテキストをKiroに渡す
+            # 1. 複雑なタスクの場合はペアプログラミングを検討
+            if task_context.complexity == "high":
+                return self._execute_with_pair(task_context, workspace)
+            
+            # 2. タスクコンテキストをKiroに渡す
             prompt = self._build_implementation_prompt(task_context)
             
-            # 2. Kiroに実装を依頼
+            # 3. Kiroに実装を依頼
             impl_response = self.kiro_client.implement(prompt, workspace.path)
             
-            # 3. 実装結果を検証
+            # 4. 実装結果を検証
             if not self._verify_implementation(impl_response):
                 raise ImplementationError("Implementation verification failed")
             
-            # 4. 変更内容をdiffとして保存
+            # 5. 変更内容をdiffとして保存
             diff = workspace.get_diff()
+            
+            # 6. コードレビューを依頼
+            if task_context.require_review:
+                review_result = self.code_review_collab.request_review(
+                    task_id=task_context.task_id,
+                    diff=diff,
+                    files_changed=impl_response.files_changed,
+                    implementation_notes=impl_response.notes
+                )
+                
+                # レビューが承認されなかった場合は修正
+                if not review_result.approved:
+                    return self._fix_review_issues(
+                        task_context,
+                        workspace,
+                        review_result
+                    )
             
             return ImplementationResult(
                 success=True,
                 diff=diff,
                 files_changed=impl_response.files_changed,
-                duration_seconds=impl_response.duration
+                duration_seconds=impl_response.duration,
+                review_result=review_result if task_context.require_review else None
             )
             
         except Exception as e:
@@ -244,6 +284,49 @@ class TaskExecutor:
                 success=False,
                 error=str(e)
             )
+    
+    def _execute_with_pair(
+        self,
+        task_context: TaskContext,
+        workspace: Workspace
+    ) -> ImplementationResult:
+        """ペアプログラミングで実装"""
+        # ペアセッションを開始
+        session = self.pair_programming_collab.start_session(
+            task_id=task_context.task_id,
+            task_description=task_context.description,
+            required_capability="backend"  # タスクに応じて変更
+        )
+        
+        # 協調して実装
+        # （実装の詳細は省略）
+        
+        return ImplementationResult(
+            success=True,
+            diff=workspace.get_diff(),
+            files_changed=[],
+            duration_seconds=0,
+            pair_session_id=session.session_id
+        )
+    
+    def _fix_review_issues(
+        self,
+        task_context: TaskContext,
+        workspace: Workspace,
+        review_result: ReviewResult
+    ) -> ImplementationResult:
+        """レビュー指摘を修正"""
+        # レビューコメントに基づいて修正
+        fix_prompt = self._build_fix_prompt(review_result)
+        fix_response = self.kiro_client.implement(fix_prompt, workspace.path)
+        
+        return ImplementationResult(
+            success=True,
+            diff=workspace.get_diff(),
+            files_changed=fix_response.files_changed,
+            duration_seconds=fix_response.duration,
+            review_result=review_result
+        )
     
     def _build_implementation_prompt(self, task_context: TaskContext) -> str:
         """実装プロンプトを構築"""

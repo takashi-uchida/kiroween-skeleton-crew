@@ -14,8 +14,9 @@
 | Task Registry | タスクセットのバージョン管理、状態管理（Ready/Running/Blocked/Done）、イベント履歴を保持する永続ストア。 |
 | Repo Pool Manager | ローカル上に複数のクローン済みリポジトリスロット（`workspace-{repo}-{slot}`）を準備/割当/クリーンアップ。 |
 | Dispatcher | Readyタスクを監視し、必要スキルと利用可能なエージェントプールに基づいて実行予約。Repo Poolからスロットを確保してRunnerに情報を渡す。 |
+| **Agent Tools (MCP)** | **Orchestrator Agentが使用する専門化されたツール群。MCPプロトコルを通じて、実装、レビュー、テスト、リファクタリング、ドキュメント生成等の機能を提供。** |
 | Agent Pool | Agent Runnerのプール定義。`local-process`/`docker`/`k8s`/`remote-host`など複数の実行ターゲットを抽象化する。各プールは最大同時実行数とリソースクォータを持つ。 |
-| Agent Runner | 受け取ったタスクを実行するワーカー。コンテナベースで起動し、ワークスペースをマウントして`fetch→rebase→branch→実装→テスト→push`を行い、成果物を保存。 |
+| Agent Runner | 受け取ったタスクを実行するワーカー。コンテナベースで起動し、A2Aプロトコルを使用して他のエージェントと協調。`fetch→rebase→branch→実装→レビュー→テスト→push`を行い、成果物を保存。 |
 | Artifact Store | diff/ログ/テスト結果等の成果物を保管するストレージ。Runner終了時にアップロードし、PR作成や監査で参照。 |
 | Review & PR Service | Runner成果物をもとにPRを作成、テンプレート（タスクID/要約/テスト結果など）を生成し、CI状態を連携。PRイベントをTask Registryに反映。 |
 | Cleanup & Dependency Notifier | マージ後にブランチ削除/ワークスペース返却/依存タスクへのReady通知を行う。 |
@@ -103,18 +104,34 @@ Dispatcher ──┬─► Repo Pool Manager（slot割当）
              │
              └─► Agent Pool（空きRunnerを選択）
    ▼
-Agent Runner（コンテナ）
+Agent Runner（Orchestrator Agent / Kiro）
    │ 4. fetch/rebase/branch
-   │ 5. 実装・テスト・push
+   │ 5. Implementation Tool呼び出し（MCP）
+   │    ┌──────────────────┐
+   │    │ Implementation   │
+   │    │ Tool (MCP)       │
+   │    └──────────────────┘
+   │ 6. Review Tool呼び出し（MCP）
+   │    ┌──────────────────┐
+   │    │ Review Tool      │
+   │    │ (MCP)            │
+   │    └──────────────────┘
+   │ 7. レビュー結果に基づいて修正（必要に応じて）
+   │ 8. Test Tool呼び出し（MCP）
+   │    ┌──────────────────┐
+   │    │ Test Tool        │
+   │    │ (MCP)            │
+   │    └──────────────────┘
+   │ 9. push
    ▼
-Artifact Store（diff/log/test）
-   │ 6. 結果通知
+Artifact Store（diff/log/test/review）
+   │ 10. 結果通知
    ▼
 Review & PR Service
-   │ 7. PR作成＋CIトリガ
+   │ 11. PR作成＋CIトリガ
    ▼
 Task Registry（ステータス更新）
-   │ 8. Done → 依存タスクReady化
+   │ 12. Done → 依存タスクReady化
    ▼
 Cleanup & Dependency Notifier
 ```

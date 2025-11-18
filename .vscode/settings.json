@@ -1,3 +1,4 @@
 {
-    "kiroAgent.configureMCP": "Enabled"
+    "kiroAgent.configureMCP": "Enabled",
+    "chatgpt.openOnStartup": true
 }
