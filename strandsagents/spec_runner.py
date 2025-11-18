@@ -30,7 +30,7 @@ class SpecTaskRunner:
     def __init__(
         self,
         agent: Optional[StrandsAgent] = None,
-        model: str = "gpt-5",
+        model: str = "gpt-5-codex",
         llm_client: Optional[Any] = None,
     ) -> None:
         if llm_client is not None and model:

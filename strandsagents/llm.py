@@ -23,7 +23,7 @@ class OpenAIChatClient:
 
     def __init__(
         self,
-        model: str = "gpt-5",
+        model: str = "gpt-5-codex",
         api_key: str | None = None,
         api_base: str = "https://api.openai.com/v1",
         timeout: int = 60,

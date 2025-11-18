@@ -41,7 +41,8 @@ Instead of manually coordinating multiple developers, NecroCode:
 - Creates isolated workspaces per spec
 - Manages branches and commits automatically
 - Prevents conflicts between concurrent specs
-## How It Works
+## High-Level Workflow
+NecroCode always follows the same ritualized flow. See `architecture.md` for component internals and `development.md` for implementation details.
 ```
 User Input: "Create a real-time chat app with authentication"
      ↓

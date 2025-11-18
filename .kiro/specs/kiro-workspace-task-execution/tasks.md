@@ -82,7 +82,7 @@
   - Document branch naming convention
   - _Requirements: 2.1, 4.1_
 
-- [ ] 13. Update strandsagents to use gpt-5-codex as default model
+- [x] 13. Update strandsagents to use gpt-5-codex as default model
   - Update `strandsagents/agent.py` to change default model from "gpt-5" to "gpt-5-codex"
   - Update `strandsagents/llm.py` OpenAIChatClient default model to "gpt-5-codex"
   - Update `strandsagents/spec_runner.py` SpecTaskRunner default model to "gpt-5-codex"

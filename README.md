@@ -86,7 +86,7 @@ workspace.push_branch(branch_name)
 
 ### Running Spec Tasks with Strands Agents
 
-NecroCode now integrates with **Strands Agents**, which default to OpenAI's `gpt-5`.
+NecroCode now integrates with **Strands Agents**, which default to OpenAI's `gpt-5-codex`.
 
 ```bash
 export OPENAI_API_KEY=sk-your-key
@@ -234,4 +234,3 @@ python3 demo_multi_agent.py
 # Test logging and monitoring
 python3 test_logging_monitoring.py
 ```
-

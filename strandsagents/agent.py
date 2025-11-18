@@ -25,7 +25,7 @@ class StrandsAgent:
         self,
         name: str,
         system_prompt: str | None = None,
-        model: str = "gpt-5",
+        model: str = "gpt-5-codex",
         llm_client: Optional[Any] = None,
         temperature: float | None = None,
         max_tokens: int = 900,

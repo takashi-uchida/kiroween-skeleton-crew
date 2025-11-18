@@ -1,533 +1,98 @@
 # NecroCode Development Guide
+
 ## Quick Reference
-- **Purpose**: Guide spirits through implementation details.
-- **Audience**: Contributors executing tasks, DocumentationSpirit, Dev/QA spirits.
-- **Cross-Links**: Product overview → overview.md, system design → architecture.md.
-## Directory Structure & Conventions
+- **Purpose**: Describe how to build, extend, and operate NecroCode.
+- **Audience**: Spirits implementing tasks and humans maintaining the framework.
+- **Related Docs**: Product framing → `overview.md`, system design → `architecture.md`.
+
+## Directory Layout
 ```
-necrocode/                              # Root directory
-├── .kiro/                              # Kiro configuration
-│   ├── steering/                       # Framework documentation
-│   │   ├── product.md                  # Product overview
-│   │   ├── tech.md                     # Technical stack
-│   │   ├── structure.md                # This file
-│   │   └── spirit-workflow.md           # Spirit collaboration flow
-│   │
-│   ├── specs/                          # Spec definitions
-│   │   ├── necrocode-spirit-orchestration/
-│   │   │   ├── requirements.md
-│   │   │   ├── design.md
-│   │   │   └── tasks.md
-│   │   ├── kiro-workspace-task-execution/
-│   │   │   ├── requirements.md
-│   │   │   ├── design.md
-│   │   │   └── tasks.md
-│   │   └── spirit-protocol/
-│   │       ├── requirements.md
-│   │       ├── design.md
-│   │       └── tasks.md
-│   │
-│   ├── hooks/                          # Spirit hooks
-│   │   ├── on_spec_complete.py
-│   │   ├── on_task_start.py
-│   │   └── on_task_complete.py
-│   │
-│   └── workspace-state.json            # Active workspace tracking
-│
-├── framework/                          # Core framework
-│   ├── necromancer/
-│   │   ├── __init__.py
-│   │   ├── necromancer.py              # Main necromancer
-│   │   ├── job_parser.py               # Parse job descriptions
-│   │   ├── issue_router.py             # Route tasks to spirits
-│   │   └── spec_generator.py           # Generate specs
-│   │
-│   ├── spirits/
-│   │   ├── __init__.py
-│   │   ├── base_spirit.py               # Base spirit class
-│   │   ├── architect_spirit.py          # Spec creation
-│   │   ├── scrum_master_spirit.py       # Task breakdown
-│   │   ├── frontend_spirit.py           # Frontend development
-│   │   ├── backend_spirit.py            # Backend development
-│   │   ├── database_spirit.py           # Database design
-│   │   ├── qa_spirit.py                 # Testing
-│   │   └── devops_spirit.py             # Deployment
-│   │
-│   ├── workspace_manager/
-│   │   ├── __init__.py
-│   │   ├── workspace_manager.py        # Workspace orchestration
-│   │   ├── workspace.py                # Single workspace
-│   │   ├── branch_strategy.py          # Branch naming
-│   │   ├── state_tracker.py            # State persistence
-│   │   └── git_operations.py           # Git commands
-│   │
-│   ├── communication/
-│   │   ├── __init__.py
-│   │   ├── spirit_protocol.py          # Protocol implementation
-│   │   └── message_bus.py              # Event coordination
-│   │
-│   └── task_executor/
-│       ├── __init__.py
-│       ├── task_loader.py              # Load tasks from specs
-│       └── task_tracker.py             # Track task progress
-│
-├── examples/                           # Demo applications
-│   ├── workspace1/                     # Sample: Collaboration tool
-│   │   ├── README.md                   # "Built with NecroCode"
-│   │   ├── .kiro/
-│   │   │   └── specs/
-│   │   │       └── whiteboard-app/
-│   │   │           ├── requirements.md
-│   │   │           ├── design.md
-│   │   │           └── tasks.md
-│   │   ├── frontend/
-│   │   ├── backend/
-│   │   └── ...
-│   │
-│   └── workspace2/                     # Sample: IoT dashboard
-│       ├── README.md                   # "Built with NecroCode"
-│       ├── .kiro/
-│       │   └── specs/
-│       │       └── iot-dashboard/
-│       │           ├── requirements.md
-│       │           ├── design.md
-│       │           └── tasks.md
-│       ├── frontend/
-│       ├── backend/
-│       └── ...
-│
-├── tests/                              # Test suite
-│   ├── test_necromancer.py
-│   ├── test_workspace_manager.py
-│   ├── test_spirits.py
-│   └── ...
-│
-├── docs/                               # Documentation
-│   ├── getting-started.md
-│   ├── architecture.md
-│   └── api-reference.md
-│
-├── demo_multi_spirit.py                 # Multi-spirit demo
-├── demo_logging_monitoring.py          # Logging demo
-├── README.md                           # Main README
-├── DEMO_README.md                      # Demo documentation
-├── LICENSE
-└── .gitignore
+.
+├── .kiro/
+│   ├── specs/                # Framework specs + task plans
+│   └── steering/             # Overview, architecture, and this guide
+├── framework/
+│   ├── agents/               # Spirit abstractions and helpers
+│   ├── communication/        # Spirit Protocol + bus utilities
+│   ├── orchestrator/         # Necromancer, issue routing, workload monitors
+│   └── workspace_manager/    # Git + workspace lifecycle
+├── necrocode/task_registry/  # Task/event/artifact persistence
+├── strandsagents/            # LLM runners (StrandsAgent, SpecTaskRunner)
+├── examples/                 # Usage demos and notebooks
+├── tests/                    # Pytest suites
+└── demo_* / scripts/         # Scenario walkthroughs
 ```
 
 ### `.kiro/`
-Configuration and metadata for the NecroCode framework itself.
-
-- **steering/**: Documentation that guides AI spirits working on NecroCode
-- **specs/**: Specifications for NecroCode features (not user projects)
-- **hooks/**: Automation triggers for framework development
-- **workspace-state.json**: Tracks dynamically created user workspaces
+- `steering/` hosts canonical steering docs; historical inputs live as `.bak` backups.
+- `specs/` contains requirements/design/tasks for every subsystem (agent runner, repo pool, dispatcher, etc.). Specs sync with the Task Registry through `necrocode/task_registry/kiro_sync.py`.
 
 ### `framework/`
-The core NecroCode implementation.
-
-- **necromancer/**: Necromancer and coordination logic
-- **spirits/**: All spirit implementations
-- **workspace_manager/**: Workspace isolation and Git operations
-- **communication/**: Inter-spirit messaging
-- **task_executor/**: Task loading and tracking
-
-### `examples/`
-**Important**: These are NOT used by the framework at runtime!
-
-These are sample applications created WITH NecroCode to demonstrate capabilities:
-- workspace1: Real-time collaboration tool
-- workspace2: IoT dashboard
-
-Each includes:
-- Full source code
-- README explaining it was built with NecroCode
-- Original specs used to generate it
-
-### Dynamic Workspaces
-When users run NecroCode, it creates workspaces dynamically:
-
-```
-necrocode/
-├── workspace-my-chat-app/          # Created at runtime
-│   ├── .git/                       # Cloned from user's repo
-│   ├── frontend/
-│   ├── backend/
-│   └── ...
-│
-├── workspace-another-project/      # Another user project
-│   ├── .git/
-│   └── ...
-```
-
-These are:
-- Created by cloning user's GitHub workspace
-- Automatically added to `.gitignore`
-- Tracked in `workspace-state.json`
-- Cleaned up after completion
-
-### Necromancer Module
-```python
-from framework.necromancer import Necromancer, JobParser, IssueRouter
-
-necromancer = Necromancer(workspace=".")
-necromancer.summon_team(job_description, role_requests)
-```
-
-### Spirits Module
-```python
-from framework.spirits import (
-    ArchitectSpirit,
-    ScrumMasterSpirit,
-    BackendSpirit,
-    FrontendSpirit
-)
-
-architect = ArchitectSpirit(workspace)
-specs = architect.create_specs(job_description)
-```
-
-### Workspace Manager Module
-```python
-from framework.workspace_manager import (
-    WorkspaceNecromancer,
-    Workspace,
-    BranchStrategy
-)
-
-necromancer = WorkspaceNecromancer(config)
-workspace = necromancer.create_workspace(spec_name, repo_url)
-```
-
-### Communication Module
-```python
-from framework.communication import SpiritProtocol, MessageBus
-
-protocol = SpiritProtocol()
-message = protocol.format_commit("backend", "Add auth", "1.1")
-```
-
-All imports use absolute paths from project root:
-
-```python
-
-### `.kiro/workspace-state.json`
-Tracks all active workspaces:
-```json
-{
-  "workspaces": {
-    "my-chat-app": {
-      "spec_name": "my-chat-app",
-      "workspace_path": "./workspace-my-chat-app",
-      "repo_url": "https://github.com/user/my-chat-app.git",
-      "current_branch": "main",
-      "created_at": "2025-11-09T15:30:00Z",
-      "tasks_completed": ["1.1", "1.2"],
-      "status": "active"
-    }
-  }
-}
-```
-
-### `.gitignore`
-Excludes dynamic workspaces:
-```
-workspace-*/
-__pycache__/
-*.pyc
-.pytest_cache/
-```
-
-### Files
-- Python modules: `snake_case.py`
-- Classes: `PascalCase`
-- Functions: `snake_case()`
-- Constants: `UPPER_SNAKE_CASE`
-
-### Directories
-- Framework modules: `snake_case/`
-- Dynamic workspaces: `workspace-{spec-name}/`
-- Example apps: `workspace1/`, `workspace2/`
-
-### Git Branches
-- Task branches: `feature/task-{spec}-{task-id}-{description}`
-- Spirit branches: `{role}/spirit-{instance}/{feature}`
-## Extension Points & Best Practices
-### Adding New Spirit Types
-1. Create `framework/spirits/new_spirit.py`
-2. Inherit from `BaseSpirit`
-3. Implement required methods
-4. Register in `Necromancer.summon_team()`
-
-### Adding New Hooks
-1. Create `.kiro/hooks/on_event.py`
-2. Define trigger conditions
-3. Implement hook logic
-
-### Custom Branch Strategies
-1. Extend `BranchStrategy` class
-2. Override `generate_branch_name()`
-3. Configure in `WorkspaceNecromancer`
-
-1. **Never modify examples/**: These are static demos
-2. **Use WorkspaceNecromancer**: Don't create workspaces manually
-3. **Follow Spirit Protocol**: All commits must use standard format
-4. **Track state**: Always update workspace-state.json
-5. **Clean up**: Remove workspaces after completion
-## Spirit Collaboration Workflow
-This document describes how NecroCode spirits (spirits) collaborate to transform a job description into a fully implemented application.
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Phase 1: Summoning & Planning                               │
-└─────────────────────────────────────────────────────────────┘
-
-User Input: "Create a real-time chat app with authentication"
-     ↓
-[🧙 Necromancer]
-  - Parse job description
-  - Determine required spirits
-  - Clone user's workspace → workspace-chat-app/
-     ↓
-[👻 Architect Spirit]
-  - Analyze requirements
-  - Design system architecture
-  - Generate specs → .kiro/specs/chat-app/
-    ├── requirements.md
-    ├── design.md (React + Node.js + MongoDB)
-    └── tasks.md (15 tasks defined)
-     ↓
-[📋 Scrum Master Spirit]
-  - Parse tasks from specs
-  - Analyze dependencies
-  - Assign tasks to appropriate spirits
-  - Balance workload across instances
-
-┌─────────────────────────────────────────────────────────────┐
-│ Phase 2: Parallel Execution                                 │
-└─────────────────────────────────────────────────────────────┘
-
-[⚙️ Backend Spirit 1] Task 1.1: Database Schema
-  1. Create branch: feature/task-chat-app-1.1-database-schema
-  2. Implement: models/User.js, models/Message.js
-  3. Commit: spirit(database): summon user and message schemas [Task 1.1]
-  4. Push & Create PR #1
-
-[⚙️ Backend Spirit 2] Task 1.2: JWT Authentication
-  1. Create branch: feature/task-chat-app-1.2-jwt-auth
-  2. Implement: routes/auth.js, middleware/auth.js
-  3. Commit: spirit(backend): cast JWT authentication spell [Task 1.2]
-  4. Push & Create PR #2
-
-[💻 Frontend Spirit 1] Task 2.1: Login UI
-  1. Create branch: feature/task-chat-app-2.1-login-ui
-  2. Implement: components/Login.jsx, styles/login.css
-  3. Commit: spirit(frontend): summon login form [Task 2.1]
-  4. Push & Create PR #3
-
-[💻 Frontend Spirit 2] Task 2.2: Chat Interface
-  1. Create branch: feature/task-chat-app-2.2-chat-ui
-  2. Implement: components/ChatRoom.jsx, components/MessageList.jsx
-  3. Commit: spirit(frontend): weave chat interface [Task 2.2]
-  4. Push & Create PR #4
-
-... (11 more tasks in parallel)
-
-┌─────────────────────────────────────────────────────────────┐
-│ Phase 3: Quality Assurance                                  │
-└─────────────────────────────────────────────────────────────┘
-
-[🧪 QA Spirit]
-  - Review all PRs
-  - Run automated tests
-  - Create test coverage reports
-  - Approve or request changes
-
-┌─────────────────────────────────────────────────────────────┐
-│ Phase 4: Deployment                                         │
-└─────────────────────────────────────────────────────────────┘
-
-[🚀 DevOps Spirit]
-  - Setup CI/CD pipeline
-  - Configure deployment
-  - Create Docker containers
-  - Deploy to staging
-
-┌─────────────────────────────────────────────────────────────┐
-│ Result: 15 PRs ready for review                            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 🧙 Necromancer (Necromancer)
-**Purpose**: Coordinate the entire development lifecycle
-
-**Responsibilities**:
-- Parse natural language job descriptions
-- Summon appropriate spirits based on requirements
-- Create and manage workspaces
-- Coordinate sprint execution
-- Monitor overall progress
-- Handle spirit lifecycle (summon → execute → banish)
-
-**Key Methods**:
-```python
-necromancer.summon_team(job_description, role_requests)
-necromancer.execute_sprint()
-necromancer.banish_spirits()
-```
-
-### 👻 Architect Spirit
-**Purpose**: Design system architecture and create specifications
-
-**Responsibilities**:
-- Analyze job description requirements
-- Design system architecture
-- Choose technology stack
-- Generate detailed specs (requirements, design, tasks)
-- Define component boundaries
-- Plan data models
-
-**Output**:
-```
-.kiro/specs/{project-name}/
-├── requirements.md    # What needs to be built
-├── design.md         # How it will be built
-└── tasks.md          # Breakdown into implementable tasks
-```
-
-### 📋 Scrum Master Spirit
-**Purpose**: Task management and assignment
-
-**Responsibilities**:
-- Parse tasks from architect's specs
-- Analyze task dependencies
-- Route tasks to appropriate spirits
-- Balance workload across multiple instances
-- Track task progress
-- Manage sprint execution
-
-**Routing Logic**:
-```python
-
-### Spirit Protocol Format
-
-All inter-spirit communication follows the Spirit Protocol:
-
-#### Commit Messages
-```
-spirit(scope): description [Task X.Y]
-
-Examples:
-spirit(backend): summon JWT authentication [Task 1.2]
-spirit(frontend): cast login form spell [Task 2.1]
-spirit(database): weave user schema enchantment [Task 3.1]
-```
-
-#### Branch Names
-```
-feature/task-{spec-id}-{task-number}-{description}
-
-Examples:
-feature/task-chat-app-1.2-jwt-authentication
-feature/task-iot-dashboard-2.3-sensor-visualization
-```
-
-#### Spirit Instance Branches
-```
-{role}/spirit-{instance}/{feature-name}
-
-Examples:
-frontend/spirit-1/login-ui
-frontend/spirit-2/dashboard-ui
-backend/spirit-1/auth-api
-backend/spirit-2/websocket-server
-```
-
-### Message Bus
-
-Spirits communicate via the Message Bus:
-
-```python
-
-### Multi-Instance Support
-
-Multiple spirits of the same type work in parallel:
-
-```python
-
-Each spec gets its own isolated workspace:
-
-```
-necrocode/
-├── workspace-chat-app/          # Spec 1
-│   ├── .git/
-│   ├── backend/
-│   └── frontend/
-│
-├── workspace-iot-dashboard/     # Spec 2
-│   ├── .git/
-│   ├── backend/
-│   └── frontend/
-```
-
-**Benefits**:
-- No conflicts between concurrent specs
-- Clean Git history per project
-- Independent branch management
-- Easy cleanup after completion
-
-### Task Failure
-```python
-try:
-    spirit.execute_task(task)
-except TaskExecutionError as e:
-    # Retry with different spirit
-    scrum_master.reassign_task(task, exclude=[spirit])
-    # Or escalate to Necromancer
-    necromancer.handle_failure(task, e)
-```
-
-### Spirit Failure
-```python
-if spirit.is_unresponsive():
-    # Summon replacement
-    new_spirit = necromancer.summon_replacement(spirit.role)
-    # Transfer workload
-    new_spirit.take_over(spirit.current_tasks)
-```
-
-### Workload Visualization
-```
-BACKEND Spirits:
-  backend_spirit_1    | Active: 2 | Completed: 3 | ████░
-  backend_spirit_2    | Active: 1 | Completed: 4 | ███░░
-  backend_spirit_3    | Active: 2 | Completed: 2 | ███░░
-
-FRONTEND Spirits:
-  frontend_spirit_1   | Active: 1 | Completed: 2 | ██░░░
-  frontend_spirit_2   | Active: 0 | Completed: 3 | ██░░░
-```
-
-### Progress Tracking
-```python
-progress = {
-    "total_tasks": 15,
-    "completed": 8,
-    "in_progress": 5,
-    "pending": 2,
-    "percentage": 53.3
-}
-```
-
-1. **Single Responsibility**: Each spirit focuses on its domain
-2. **Clear Communication**: Use Spirit Protocol consistently
-3. **Parallel Work**: Maximize concurrent task execution
-4. **Clean Branches**: One branch per task
-5. **Atomic Commits**: Small, focused commits
-6. **Test Coverage**: QA spirit validates all changes
-7. **Documentation**: Update specs as implementation evolves
-
-```python
-## See Also
-- [overview.md](overview.md) — Vision and target users
-- [architecture.md](architecture.md) — Protocols, components, data models
+- `agents/`: Higher-level spirit logic (task planners, team builders).
+- `communication/`: Spirit Protocol serialization and bus helpers (future dispatcher hooks).
+- `orchestrator/`: Necromancer coordination (`necromancer.py`), issue routing, workload monitoring, and team composition.
+- `workspace_manager/`: `BranchStrategy`, `GitOperations`, `Workspace`, `WorkspaceManager`, `.gitignore` manager, and `StateTracker`.
+
+### `necrocode/task_registry/`
+Implements `TaskRegistry`, persistence stores, locking, query/graph engines, and kiro-sync utilities. All data is JSON or JSONL for easy inspection.
+
+### `strandsagents/`
+Contains `StrandsAgent`, `SpecTaskRunner`, and OpenAI client wrappers used by orchestration flows and upcoming TaskExecutionOrchestrator features.
+
+### `examples/` & `demos/`
+Self-contained scripts such as `examples/basic_usage.py`, `demo_multi_agent.py`, and `demo_task_registry_graph.py` illustrate standard flows. Treat these as living runbooks.
+
+## Module Organization & Imports
+- Always prefer absolute imports (e.g., `from framework.workspace_manager.workspace import Workspace`).
+- Keep domain dataclasses next to their modules (`WorkspaceInfo` in `workspace_manager/models.py`, `Taskset` in `task_registry/models.py`).
+- Orchestrator modules should be thin: call into dedicated helpers rather than embedding Git or registry logic directly.
+
+## Naming Conventions
+- **Branches**: `feature/task-{spec-id}-{task-number}-{slug}` generated via `BranchStrategy.generate_branch_name`. Multi-instance spirits may use `{role}/spirit-{instance}/{slug}`.
+- **Commits**: `spirit(scope): <spell description> [Task X.Y]` via `Workspace.commit_task`.
+- **Specs/Tasks**: Decimal numbering (1, 1.1, 1.1.1) with `_Requirements:` breadcrumbs that match requirement IDs.
+- **Code**: Modules/folders snake_case, classes PascalCase, functions snake_case, constants UPPER_SNAKE_CASE, exports defined in each `__all__`.
+
+## Spirit Workflow
+1. **Summoning** – `framework/orchestrator/team_builder.py` reads role requests, instantiates spirits (possibly multiple instances per role), and registers them with the message bus.
+2. **Planning** – Architect/ScrumMaster spirits parse `.kiro/specs/*/tasks.md`; `necrocode/task_registry/kiro_sync.py` mirrors them into the Task Registry with dependency graphs.
+3. **Execution** – Agent Runner (spec) or other spirits request workspaces from `WorkspaceManager`, apply code changes, and follow Spirit Protocol formatting for branches/commits.
+4. **Reporting** – Events flow into `event_store.py`; artifacts attach via `TaskRegistry.add_artifact`. Dispatcher/Review PR Service specs describe how results return to humans.
+5. **Completion** – Dependent tasks unblock automatically (`TaskRegistry.update_task_state`), workspaces are cleaned with `WorkspaceManager.cleanup_workspace`, and Repo Pool slots return to the pool.
+
+## Context Building & Prompting
+- `SpecTaskRunner` (`strandsagents/spec_runner.py`) parses tasks and produces `StrandsTask`s.
+- Feed requirements/design snippets into the optional `context` dict when invoking `StrandsAgent.run_task`; prompts already include identifiers, descriptions, and checklists.
+- Default LLM model is `gpt-5-codex`; override via the runner, agent, or `OPENAI_MODEL` environment variable when experimenting.
+
+## Parallel Execution & Load Balancing
+- Multi-instance routing is implemented per `.kiro/specs/necrocode-agent-orchestration`: IssueRouter checks bilingual keyword rules, then asks each spirit for `get_workload()` to choose the least busy instance.
+- Workspace Manager is concurrency-safe thanks to file locks in `lock_manager.py`; open separate `Workspace` objects per task to avoid shared mutable state.
+- Repo Pool Manager (spec) will furnish pre-warmed git slots. Keep new code stateless so it can run on multiple runners behind the Dispatcher.
+
+## Error Handling & Monitoring
+- Git operations raise descriptive exceptions; wrap whole task executions in try/except to add task context before bubbling up.
+- `strandsagents/llm.OpenAIChatClient` validates `OPENAI_API_KEY` and should be wrapped with retry/backoff logic when TaskExecutionOrchestrator lands (spec tasks 17–19).
+- Emit structured logs (see `demo_logging_monitoring.py`) including task IDs, workspace paths, and agent instances. Metric hooks planned in the agent-runner spec should capture runtime, retries, and artifact counts.
+
+## Testing Strategy
+- Unit tests live in `tests/` (e.g., `tests/test_task_registry.py`, `tests/test_lock_manager.py`, `tests/test_ai_components.py`). Use pytest fixtures/temp directories for filesystem work.
+- Integration tests at repo root (`test_graph_visualization.py`, `test_logging_monitoring.py`, etc.) ensure multiple modules cooperate correctly.
+- When adding new services, create targeted fixtures (mock git repos, stub LLM clients) and document them in `tests/README.md` if patterns become reusable.
+
+## Extension Points
+- **TaskExecutionOrchestrator** (`framework/task_executor/` spec) will coordinate StrandsAgent output, file writes, commits, and pushes.
+- **Dispatcher** will pull ready tasks from Task Registry and hand them to Agent Runner instances.
+- **Artifact Store** persists logs/diffs/binaries for Review PR Service and downstream analysis.
+- **Review PR Service** automates diff review and emits findings back into Task Registry events.
+
+## Best Practices
+- Never mutate files under `examples/`; treat them as golden demos.
+- Use `WorkspaceManager` for every branch/commit—manual git commands can bypass Spirit Protocol conventions.
+- Always update Task Registry state alongside workspace actions to keep kiro-sync in agreement with the Markdown specs.
+- Clean up temporary workspaces/slots even on failure to avoid stale locks.
+
+## Cross-References
+- High-level value prop & workflow: `overview.md`
+- Component responsibilities & Spirit Protocol: `architecture.md`
+- Detailed requirements: `.kiro/specs/<service>/requirements.md`
