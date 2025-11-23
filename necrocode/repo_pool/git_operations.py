@@ -147,13 +147,19 @@ class GitOperations:
         command = ["git", "fetch", "--all", "--prune"]
         return self._run_git_command(command, cwd=repo_dir, retry=True)
     
-    def clean(self, repo_dir: Path, force: bool = True) -> GitResult:
+    def clean(
+        self,
+        repo_dir: Path,
+        force: bool = True,
+        excludes: Optional[List[str]] = None
+    ) -> GitResult:
         """
         Remove untracked files from working directory.
         
         Args:
             repo_dir: Repository directory
             force: Force removal of untracked files and directories
+            excludes: Optional list of path patterns to preserve
             
         Returns:
             GitResult with clean operation details
@@ -163,6 +169,11 @@ class GitOperations:
         """
         flags = "-fdx" if force else "-fd"
         command = ["git", "clean", flags]
+        
+        if excludes:
+            for pattern in excludes:
+                command.extend(["-e", pattern])
+        
         return self._run_git_command(command, cwd=repo_dir, retry=True)
     
     def reset_hard(self, repo_dir: Path, ref: str = "HEAD") -> GitResult:

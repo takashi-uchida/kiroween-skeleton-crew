@@ -51,6 +51,8 @@ class SlotCleaner:
         """
         self.git_ops = git_ops or GitOperations()
         self.cleanup_log: List[CleanupRecord] = []
+        # Preserve metadata files that live inside the git working tree
+        self._metadata_excludes: List[str] = ["slot.json"]
         
         # Background cleanup support
         self._background_executor: Optional[ThreadPoolExecutor] = None
@@ -94,7 +96,11 @@ class SlotCleaner:
             
             # 2. Clean untracked files
             try:
-                clean_result = self.git_ops.clean(slot.slot_path, force=True)
+                clean_result = self.git_ops.clean(
+                    slot.slot_path,
+                    force=True,
+                    excludes=self._metadata_excludes
+                )
                 operations.append("clean")
                 if not clean_result.success:
                     errors.append(f"Clean failed: {clean_result.stderr}")
@@ -205,7 +211,11 @@ class SlotCleaner:
             
             # 2. Clean untracked files
             try:
-                clean_result = self.git_ops.clean(slot.slot_path, force=True)
+                clean_result = self.git_ops.clean(
+                    slot.slot_path,
+                    force=True,
+                    excludes=self._metadata_excludes
+                )
                 operations.append("clean")
                 if not clean_result.success:
                     errors.append(f"Clean failed: {clean_result.stderr}")

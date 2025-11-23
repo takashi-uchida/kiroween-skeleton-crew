@@ -53,6 +53,25 @@ def test_clean(git_ops, temp_repo):
     assert not (temp_repo / "untracked.txt").exists()
 
 
+def test_clean_excludes_metadata_files(git_ops, temp_repo):
+    """Test clean operation preserves metadata files via excludes."""
+    # Create metadata file and another untracked file
+    metadata_file = temp_repo / "slot.json"
+    metadata_file.write_text("{}")
+    other_file = temp_repo / "temp.txt"
+    other_file.write_text("remove me")
+    
+    result = git_ops.clean(
+        temp_repo,
+        force=True,
+        excludes=["slot.json"]
+    )
+    
+    assert result.success
+    assert metadata_file.exists()
+    assert not other_file.exists()
+
+
 def test_reset_hard(git_ops, temp_repo):
     """Test reset_hard operation."""
     # Modify a tracked file
