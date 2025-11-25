@@ -74,6 +74,44 @@ class CredentialManager:
         logger.warning("Git token not found in environment or secret mount")
         return None
     
+    def get_llm_api_key(self, env_var: str = "LLM_API_KEY") -> Optional[str]:
+        """
+        Get LLM service API key.
+        
+        Attempts to load the API key from:
+        1. Environment variable
+        2. Secret mount file (if configured)
+        
+        Args:
+            env_var: Environment variable name for LLM API key
+            
+        Returns:
+            LLM API key if found, None otherwise
+            
+        Raises:
+            SecurityError: If API key is required but not found
+            
+        Requirements: 1.4, 10.1, 16.1
+        """
+        # Try environment variable first
+        api_key = os.getenv(env_var)
+        if api_key:
+            logger.debug(f"LLM API key loaded from environment variable: {env_var}")
+            self._credentials["llm_api_key"] = api_key
+            return api_key
+        
+        # Try secret mount if configured
+        secret_path = self._secret_mount_paths.get("llm_api_key")
+        if secret_path:
+            api_key = self._load_secret_from_file(secret_path)
+            if api_key:
+                logger.debug(f"LLM API key loaded from secret mount: {secret_path}")
+                self._credentials["llm_api_key"] = api_key
+                return api_key
+        
+        logger.warning("LLM API key not found in environment or secret mount")
+        return None
+    
     def get_api_key(
         self,
         service: str,

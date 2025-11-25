@@ -1,7 +1,7 @@
 """
 Tests for ArtifactUploader.
 
-Tests artifact uploading functionality including storage backends,
+Tests artifact uploading functionality with external service clients,
 Task Registry integration, and error handling.
 """
 
@@ -9,37 +9,36 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch
 
 import pytest
 
-from necrocode.agent_runner import (
-    ArtifactUploader,
-    ArtifactStoreClient,
-    FilesystemBackend,
+from necrocode.agent_runner.artifact_uploader import ArtifactUploader
+from necrocode.agent_runner.artifact_store_client import ArtifactStoreClient
+from necrocode.agent_runner.task_registry_client import TaskRegistryClient
+from necrocode.agent_runner.models import (
     TaskContext,
     ImplementationResult,
     TestResult,
     SingleTestResult,
     ArtifactType,
-    RunnerConfig,
 )
 from necrocode.agent_runner.exceptions import ArtifactUploadError
 
 
 @pytest.fixture
-def temp_artifact_dir():
-    """Create a temporary directory for artifacts."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield Path(temp_dir)
+def mock_artifact_store_client():
+    """Create a mock ArtifactStoreClient."""
+    client = Mock(spec=ArtifactStoreClient)
+    client.upload.return_value = "http://artifact-store/artifacts/test-uri"
+    return client
 
 
 @pytest.fixture
-def config(temp_artifact_dir):
-    """Create a test configuration."""
-    return RunnerConfig(
-        artifact_store_url=f"file://{temp_artifact_dir}",
-        mask_secrets=True,
-    )
+def mock_task_registry_client():
+    """Create a mock TaskRegistryClient."""
+    client = Mock(spec=TaskRegistryClient)
+    return client
 
 
 @pytest.fixture
@@ -89,108 +88,34 @@ def test_result():
     )
 
 
-class TestFilesystemBackend:
-    """Tests for FilesystemBackend."""
-    
-    def test_upload(self, temp_artifact_dir):
-        """Test uploading content to filesystem."""
-        backend = FilesystemBackend(temp_artifact_dir)
-        
-        content = b"test content"
-        uri = "test-spec/1.1/diff.txt"
-        
-        backend.upload(uri, content)
-        
-        # Verify file was created
-        file_path = temp_artifact_dir / uri
-        assert file_path.exists()
-        assert file_path.read_bytes() == content
-    
-    def test_save_metadata(self, temp_artifact_dir):
-        """Test saving metadata."""
-        backend = FilesystemBackend(temp_artifact_dir)
-        
-        # Upload a file first
-        uri = "test-spec/1.1/diff.txt"
-        backend.upload(uri, b"content")
-        
-        # Save metadata
-        metadata = {
-            "uri": uri,
-            "size": 7,
-            "checksum": "abc123",
-        }
-        backend.save_metadata(uri, metadata)
-        
-        # Verify metadata file was created
-        metadata_path = temp_artifact_dir / "test-spec" / "1.1" / "metadata.json"
-        assert metadata_path.exists()
-        
-        # Verify metadata content
-        saved_metadata = json.loads(metadata_path.read_text())
-        assert "diff.txt" in saved_metadata
-        assert saved_metadata["diff.txt"]["uri"] == uri
 
-
-class TestArtifactStoreClient:
-    """Tests for ArtifactStoreClient."""
-    
-    def test_initialization(self, config):
-        """Test client initialization."""
-        client = ArtifactStoreClient(config)
-        assert client.base_url == config.artifact_store_url
-        assert isinstance(client._backend, FilesystemBackend)
-    
-    def test_upload(self, config):
-        """Test uploading an artifact."""
-        client = ArtifactStoreClient(config)
-        
-        uri = client.upload(
-            spec_name="test-spec",
-            task_id="1.1",
-            artifact_type=ArtifactType.DIFF,
-            content=b"test diff content",
-        )
-        
-        assert uri == "test-spec/1.1/diff.diff"
-    
-    def test_generate_uri(self, config):
-        """Test URI generation."""
-        client = ArtifactStoreClient(config)
-        
-        uri = client._generate_uri("test-spec", "1.1", ArtifactType.DIFF)
-        assert uri == "test-spec/1.1/diff.diff"
-        
-        uri = client._generate_uri("test-spec", "1.1", ArtifactType.LOG)
-        assert uri == "test-spec/1.1/log.log"
-        
-        uri = client._generate_uri("test-spec", "1.1", ArtifactType.TEST_RESULT)
-        assert uri == "test-spec/1.1/test.json"
-    
-    def test_calculate_checksum(self, config):
-        """Test checksum calculation."""
-        client = ArtifactStoreClient(config)
-        
-        content = b"test content"
-        checksum = client._calculate_checksum(content)
-        
-        # Verify it's a valid SHA256 hex string
-        assert len(checksum) == 64
-        assert all(c in "0123456789abcdef" for c in checksum)
 
 
 class TestArtifactUploader:
     """Tests for ArtifactUploader."""
     
-    def test_initialization(self, config):
+    def test_initialization(self, mock_artifact_store_client, mock_task_registry_client):
         """Test uploader initialization."""
-        uploader = ArtifactUploader(config=config)
-        assert uploader.config == config
-        assert isinstance(uploader.client, ArtifactStoreClient)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=mock_task_registry_client
+        )
+        assert uploader.artifact_store_client == mock_artifact_store_client
+        assert uploader.task_registry_client == mock_task_registry_client
     
-    def test_upload_artifacts(self, config, task_context, impl_result, test_result):
+    def test_upload_artifacts(
+        self,
+        mock_artifact_store_client,
+        mock_task_registry_client,
+        task_context,
+        impl_result,
+        test_result
+    ):
         """Test uploading all artifacts."""
-        uploader = ArtifactUploader(config=config)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=mock_task_registry_client
+        )
         
         logs = "Test execution logs"
         artifacts = uploader.upload_artifacts(
@@ -206,10 +131,25 @@ class TestArtifactUploader:
         # Verify artifact types
         artifact_types = {a.type for a in artifacts}
         assert artifact_types == {ArtifactType.DIFF, ArtifactType.LOG, ArtifactType.TEST_RESULT}
+        
+        # Verify ArtifactStoreClient was called 3 times
+        assert mock_artifact_store_client.upload.call_count == 3
+        
+        # Verify TaskRegistryClient was called 3 times
+        assert mock_task_registry_client.add_artifact.call_count == 3
     
-    def test_upload_artifacts_without_impl_result(self, config, task_context, test_result):
+    def test_upload_artifacts_without_impl_result(
+        self,
+        mock_artifact_store_client,
+        mock_task_registry_client,
+        task_context,
+        test_result
+    ):
         """Test uploading artifacts when implementation failed."""
-        uploader = ArtifactUploader(config=config)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=mock_task_registry_client
+        )
         
         logs = "Test execution logs"
         artifacts = uploader.upload_artifacts(
@@ -224,10 +164,22 @@ class TestArtifactUploader:
         
         artifact_types = {a.type for a in artifacts}
         assert artifact_types == {ArtifactType.LOG, ArtifactType.TEST_RESULT}
+        
+        # Verify ArtifactStoreClient was called 2 times
+        assert mock_artifact_store_client.upload.call_count == 2
     
-    def test_upload_artifacts_without_test_result(self, config, task_context, impl_result):
+    def test_upload_artifacts_without_test_result(
+        self,
+        mock_artifact_store_client,
+        mock_task_registry_client,
+        task_context,
+        impl_result
+    ):
         """Test uploading artifacts when tests were not run."""
-        uploader = ArtifactUploader(config=config)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=mock_task_registry_client
+        )
         
         logs = "Test execution logs"
         artifacts = uploader.upload_artifacts(
@@ -242,15 +194,24 @@ class TestArtifactUploader:
         
         artifact_types = {a.type for a in artifacts}
         assert artifact_types == {ArtifactType.DIFF, ArtifactType.LOG}
+        
+        # Verify ArtifactStoreClient was called 2 times
+        assert mock_artifact_store_client.upload.call_count == 2
     
-    def test_mask_secrets(self, config, task_context, impl_result, test_result, monkeypatch):
-        """Test that secrets are masked in logs."""
-        # Set a fake secret in environment
-        monkeypatch.setenv("GIT_TOKEN", "secret-token-12345")
+    def test_upload_artifacts_without_task_registry(
+        self,
+        mock_artifact_store_client,
+        task_context,
+        impl_result,
+        test_result
+    ):
+        """Test uploading artifacts without Task Registry client."""
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=None  # No Task Registry
+        )
         
-        uploader = ArtifactUploader(config=config)
-        
-        logs = "Connecting with token: secret-token-12345"
+        logs = "Test execution logs"
         artifacts = uploader.upload_artifacts(
             task_context=task_context,
             impl_result=impl_result,
@@ -258,56 +219,124 @@ class TestArtifactUploader:
             logs=logs,
         )
         
-        # Find the log artifact
-        log_artifact = next(a for a in artifacts if a.type == ArtifactType.LOG)
+        # Should still upload 3 artifacts
+        assert len(artifacts) == 3
         
-        # Read the uploaded log file
-        artifact_dir = Path(config.artifact_store_url.replace("file://", ""))
-        log_path = artifact_dir / log_artifact.uri
-        log_content = log_path.read_text()
-        
-        # Verify secret was masked
-        assert "secret-token-12345" not in log_content
-        assert "***MASKED***" in log_content
+        # Verify ArtifactStoreClient was called 3 times
+        assert mock_artifact_store_client.upload.call_count == 3
     
-    def test_upload_diff(self, config, task_context, impl_result):
+    def test_upload_diff(self, mock_artifact_store_client, task_context, impl_result):
         """Test uploading diff artifact."""
-        uploader = ArtifactUploader(config=config)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=None
+        )
         
         artifact = uploader._upload_diff(task_context, impl_result.diff)
         
         assert artifact.type == ArtifactType.DIFF
-        assert artifact.uri == "test-spec/1.1/diff.diff"
+        assert artifact.uri == "http://artifact-store/artifacts/test-uri"
         assert artifact.size_bytes > 0
+        
+        # Verify client was called with correct parameters
+        mock_artifact_store_client.upload.assert_called_once()
+        call_args = mock_artifact_store_client.upload.call_args
+        assert call_args[1]["artifact_type"] == ArtifactType.DIFF.value
     
-    def test_upload_log(self, config, task_context):
+    def test_upload_log(self, mock_artifact_store_client, task_context):
         """Test uploading log artifact."""
-        uploader = ArtifactUploader(config=config)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=None
+        )
         
         logs = "Test logs"
         artifact = uploader._upload_log(task_context, logs)
         
         assert artifact.type == ArtifactType.LOG
-        assert artifact.uri == "test-spec/1.1/log.log"
+        assert artifact.uri == "http://artifact-store/artifacts/test-uri"
         assert artifact.size_bytes > 0
+        
+        # Verify client was called with correct parameters
+        mock_artifact_store_client.upload.assert_called_once()
+        call_args = mock_artifact_store_client.upload.call_args
+        assert call_args[1]["artifact_type"] == ArtifactType.LOG.value
     
-    def test_upload_test_result(self, config, task_context, test_result):
+    def test_upload_test_result(self, mock_artifact_store_client, task_context, test_result):
         """Test uploading test result artifact."""
-        uploader = ArtifactUploader(config=config)
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=None
+        )
         
         artifact = uploader._upload_test_result(task_context, test_result)
         
         assert artifact.type == ArtifactType.TEST_RESULT
-        assert artifact.uri == "test-spec/1.1/test.json"
+        assert artifact.uri == "http://artifact-store/artifacts/test-uri"
         assert artifact.size_bytes > 0
         
-        # Verify the JSON content is valid
-        artifact_dir = Path(config.artifact_store_url.replace("file://", ""))
-        test_path = artifact_dir / artifact.uri
-        test_data = json.loads(test_path.read_text())
+        # Verify client was called with correct parameters
+        mock_artifact_store_client.upload.assert_called_once()
+        call_args = mock_artifact_store_client.upload.call_args
+        assert call_args[1]["artifact_type"] == ArtifactType.TEST_RESULT.value
+    
+    def test_record_artifact_in_registry(
+        self,
+        mock_artifact_store_client,
+        mock_task_registry_client,
+        task_context,
+        impl_result
+    ):
+        """Test recording artifact in Task Registry."""
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=mock_task_registry_client
+        )
         
-        assert test_data["success"] == True
-        assert len(test_data["test_results"]) == 1
+        artifact = uploader._upload_diff(task_context, impl_result.diff)
+        uploader._record_artifact_in_registry(task_context, artifact)
+        
+        # Verify TaskRegistryClient was called
+        mock_task_registry_client.add_artifact.assert_called_once()
+        call_args = mock_task_registry_client.add_artifact.call_args
+        assert call_args[1]["task_id"] == task_context.task_id
+        assert call_args[1]["artifact_type"] == ArtifactType.DIFF.value
+        assert call_args[1]["uri"] == artifact.uri
+    
+    def test_upload_failure_handling(
+        self,
+        mock_artifact_store_client,
+        mock_task_registry_client,
+        task_context,
+        impl_result,
+        test_result
+    ):
+        """Test that upload failures are logged as warnings but don't stop execution."""
+        # Make the first upload fail
+        mock_artifact_store_client.upload.side_effect = [
+            Exception("Upload failed"),  # diff upload fails
+            "http://artifact-store/log-uri",  # log upload succeeds
+            "http://artifact-store/test-uri",  # test upload succeeds
+        ]
+        
+        uploader = ArtifactUploader(
+            artifact_store_client=mock_artifact_store_client,
+            task_registry_client=mock_task_registry_client
+        )
+        
+        logs = "Test execution logs"
+        artifacts = uploader.upload_artifacts(
+            task_context=task_context,
+            impl_result=impl_result,
+            test_result=test_result,
+            logs=logs,
+        )
+        
+        # Should have uploaded 2 artifacts (log and test, diff failed)
+        assert len(artifacts) == 2
+        
+        artifact_types = {a.type for a in artifacts}
+        assert artifact_types == {ArtifactType.LOG, ArtifactType.TEST_RESULT}
 
 
 if __name__ == "__main__":

@@ -1,0 +1,101 @@
+# Agent Runner Configuration for Kubernetes
+# Kubernetes Jobとして実行する場合の設定
+
+# 実行環境
+execution_mode: kubernetes
+
+# Kubernetes設定
+k8s_namespace: necrocode
+k8s_image: necrocode/agent-runner:latest
+k8s_image_pull_policy: Always
+
+# Secretのマウント
+k8s_secrets:
+  - git-token
+  - openai-api-key
+
+# ConfigMapのマウント（オプション）
+k8s_configmaps:
+  - runner-config
+
+# タイムアウト設定
+default_timeout_seconds: 1800
+
+# ログ設定
+log_level: INFO
+structured_logging: true
+
+# 外部サービスのURL（Kubernetes内部DNS）
+task_registry_url: http://task-registry.necrocode.svc.cluster.local:8001
+repo_pool_url: http://repo-pool.necrocode.svc.cluster.local:8002
+artifact_store_url: http://artifact-store.necrocode.svc.cluster.local:8003
+
+# LLM設定
+llm:
+  model: gpt-4
+  timeout_seconds: 120
+  # api_key は Secret から取得
+
+# リトライ設定
+git_retry_count: 3
+network_retry_count: 3
+llm_retry_count: 3
+
+# リソース制限（Kubernetes Job用）
+max_memory_mb: 4096  # 4GB
+max_cpu_percent: 200  # 2 CPU cores
+
+# Kubernetesリソース要求・制限
+k8s_resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1000m"
+  limits:
+    memory: "4Gi"
+    cpu: "2000m"
+
+# セキュリティ設定
+git_token_env_var: GIT_TOKEN
+llm_api_key_env_var: OPENAI_API_KEY
+mask_secrets: true
+
+# Kubernetes固有の設定
+k8s_service_account: agent-runner
+k8s_restart_policy: Never
+k8s_backoff_limit: 3
+
+# ノードセレクター（オプション）
+k8s_node_selector:
+  workload: agent-runner
+  # gpu: "true"  # GPU が必要な場合
+
+# Tolerations（オプション）
+k8s_tolerations:
+  - key: "workload"
+    operator: "Equal"
+    value: "agent-runner"
+    effect: "NoSchedule"
+
+# Affinity（オプション）
+# k8s_affinity:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#       - matchExpressions:
+#         - key: workload
+#           operator: In
+#           values:
+#           - agent-runner
+
+# ヘルスチェック設定
+health_check:
+  enabled: true
+  interval_seconds: 30
+  timeout_seconds: 10
+  retries: 3
+
+# ログ収集設定（オプション）
+logging:
+  # Fluentd/Fluent Bit などのログコレクターと統合
+  annotations:
+    fluentbit.io/parser: json

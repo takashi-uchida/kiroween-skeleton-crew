@@ -1,274 +1,259 @@
-# Task 15: Integration Tests Implementation Summary
+# Task 15: Integration Tests Update - Summary
 
 ## Overview
-Successfully implemented comprehensive integration tests for the Agent Runner system, covering all execution environments and performance scenarios.
+Implemented comprehensive integration tests for the Agent Runner, covering external service integration, LLM integration, end-to-end workflows, and performance testing with LLM calls.
 
 ## Completed Subtasks
 
-### 15.1 実際のタスク実行テスト (test_runner_integration.py)
-**Status**: ✅ Complete
+### 15.1 External Services Integration Test
+**File:** `tests/test_external_services_integration.py`
 
-Created comprehensive integration tests for actual task execution:
-- **Basic Integration Tests**: Runner initialization, task context validation, workspace preparation
-- **End-to-End Tests**: Complete task execution flow with mocked implementation
-- **Error Handling Tests**: Implementation failures, workspace preparation failures, cleanup after failure
-- **State Management Tests**: State transitions during execution
-- **Logging Tests**: Execution logging verification
-- **Multiple Task Tests**: Sequential execution of multiple tasks
-- **Git Integration Tests**: Branch creation, commit creation
+Implemented integration tests for external services:
+- **Task Registry Integration**: Health checks, task status updates, event logging, artifact recording
+- **Repo Pool Manager Integration**: Slot allocation/release, multiple allocations, timeout handling
+- **Artifact Store Integration**: Binary/text upload/download, large artifacts, multiple uploads
+- **Cross-Service Integration**: Complete workflow tests, error recovery, concurrent execution
+- **Service Availability**: Health checks, response time measurements
+- **Performance Tests**: Throughput testing for Task Registry and Artifact Store
 
-**Key Features**:
-- Uses temporary Git workspaces for isolated testing
-- Mocks TaskExecutor to avoid requiring Kiro API
-- Tests complete orchestration flow from start to finish
-- Validates all phases: workspace prep, implementation, testing, commit/push, artifact upload
+**Key Features:**
+- Configurable service URLs via environment variables
+- Skip tests when services unavailable (SKIP_INTEGRATION_TESTS=true)
+- Comprehensive error handling tests
+- Concurrent execution tests across services
 
-**Test Count**: 15+ integration tests
+**Test Classes:**
+- `TestTaskRegistryIntegration` (5 tests)
+- `TestRepoPoolIntegration` (5 tests)
+- `TestArtifactStoreIntegration` (6 tests)
+- `TestCrossServiceIntegration` (3 tests)
+- `TestServiceAvailability` (2 tests)
+- `TestServicePerformance` (2 tests)
 
-### 15.2 Docker実行テスト (test_docker_runner.py)
-**Status**: ✅ Complete
+**Total:** 23 integration tests
 
-Created Docker execution environment tests:
-- **Environment Validation**: Docker availability, environment info
-- **Command Building**: Docker command construction with all options
-- **Resource Limits**: Memory and CPU limit configuration
-- **Environment Variables**: Secret injection, Kiro API configuration
-- **Volume Mounts**: Workspace mounting, additional volumes
-- **Network Configuration**: Default and custom networks
-- **Security Tests**: Secret injection, readonly workspace considerations
-- **Cleanup Tests**: Container cleanup on success and failure
+### 15.2 LLM Integration Test
+**File:** `tests/test_llm_integration.py`
 
-**Key Features**:
-- Automatically skips tests if Docker is not available
-- Tests command building without requiring actual Docker execution
-- Validates all Docker configuration options
-- Tests resource limits, volumes, networks, and secrets
+Implemented integration tests for LLM service:
+- **Basic Integration**: Simple code generation, code modification, multiple file generation
+- **Model Comparison**: Performance testing across different models (gpt-4, gpt-3.5-turbo)
+- **Rate Limiting**: Rapid request handling, retry behavior
+- **Timeout Handling**: Short timeout tests, reasonable timeout verification
+- **Error Handling**: Invalid API key, invalid model, malformed response handling
+- **Token Usage**: Token counting, usage scaling, max tokens limit
+- **Service Availability**: Connectivity tests, response time measurements
+- **Code Quality**: Syntax validation, completeness checks
+- **Performance Benchmarks**: Average response time measurements
 
-**Test Count**: 30+ Docker-specific tests
+**Key Features:**
+- Configurable via SKIP_LLM_TESTS and OPENAI_API_KEY environment variables
+- Tests skip automatically if API key not available
+- Comprehensive error scenario coverage
+- Token usage tracking and validation
+- Code quality validation (syntax checking)
 
-### 15.3 Kubernetes実行テスト (test_kubernetes_runner.py)
-**Status**: ✅ Complete
+**Test Classes:**
+- `TestLLMBasicIntegration` (3 tests)
+- `TestLLMModelComparison` (2 tests, parametrized)
+- `TestLLMRateLimiting` (2 tests)
+- `TestLLMTimeout` (2 tests)
+- `TestLLMErrorHandling` (3 tests)
+- `TestLLMTokenUsage` (3 tests)
+- `TestLLMServiceAvailability` (2 tests)
+- `TestLLMCodeQuality` (2 tests)
+- `TestLLMPerformance` (1 test)
 
-Created Kubernetes execution environment tests:
-- **Environment Validation**: kubectl availability, cluster connection
-- **Job Name Generation**: DNS-1123 compliant names, length limits, special character handling
-- **Job Manifest Creation**: Complete manifest structure, metadata, container spec
-- **Resource Configuration**: Requests and limits, custom resources
-- **Volume Configuration**: Workspace volumes, secret volumes, volume mounts
-- **Environment Variables**: Configuration from secrets, Kiro API setup
-- **Labels and Annotations**: Job and Pod labels
-- **Security**: Service accounts, image pull secrets
-- **Manifest Validation**: YAML serialization, structure validation
+**Total:** 20 LLM integration tests
 
-**Key Features**:
-- Automatically skips tests if Kubernetes is not available
-- Tests manifest generation without requiring actual K8s cluster
-- Validates all Kubernetes configuration options
-- Tests Job naming, resources, volumes, secrets, and labels
+### 15.3 End-to-End Test
+**File:** `tests/test_runner_e2e.py`
 
-**Test Count**: 40+ Kubernetes-specific tests
+Implemented comprehensive end-to-end tests:
+- **Complete Workflow**: Successful execution, multiple files, test execution, dependencies
+- **Failure Scenarios**: Implementation failure, test failure, timeout, Git errors, workspace errors
+- **Network Errors**: Artifact upload failure, service unavailability
+- **Recovery Scenarios**: Retry after transient failure, cleanup after failure
+- **Concurrent Execution**: Multiple tasks in different workspaces
+- **Performance**: Complete workflow timing, sequential task performance
+- **Full Integration**: All services working together
+- **Stress Tests**: Many sequential tasks
 
-### 15.4 パフォーマンステスト (test_runner_performance.py + test_parallel_runners.py)
-**Status**: ✅ Complete
+**Key Features:**
+- Configurable via SKIP_E2E_TESTS environment variable
+- Mock implementations for controlled testing
+- Git repository setup and teardown
+- Comprehensive failure scenario coverage
+- Performance measurements
+- Concurrent execution testing
 
-Created comprehensive performance tests:
+**Test Classes:**
+- `TestCompleteWorkflow` (4 tests)
+- `TestFailureScenarios` (5 tests)
+- `TestNetworkErrorScenarios` (2 tests)
+- `TestRecoveryScenarios` (2 tests)
+- `TestConcurrentExecution` (1 test)
+- `TestE2EPerformance` (2 tests)
+- `TestFullIntegration` (1 test)
+- `TestStressScenarios` (1 test)
 
-#### test_runner_performance.py
-- **Basic Performance**: Single task execution time, workspace preparation, commit/push, artifact upload
-- **Sequential Execution**: Multiple tasks in sequence, execution overhead
-- **Resource Usage**: Memory usage for single and multiple tasks
-- **Throughput**: Task execution throughput
-- **Scalability**: Execution time scaling with task complexity
-- **Stress Tests**: Rapid task execution
-- **Comparison Tests**: Performance with/without tests, with artifacts
-- **Benchmark Tests**: Baseline performance benchmarks
+**Total:** 18 end-to-end tests
 
-#### test_parallel_runners.py
-- **Parallel Coordinator**: Registration, wait time calculation, conflict detection
-- **Parallel Execution**: Multiple tasks in parallel, parallel vs sequential comparison
-- **Scalability**: Parallel execution scaling
-- **Resource Conflicts**: Conflict detection and handling
-- **Throughput**: Parallel execution throughput
-- **Load Balancing**: Load distribution across runners
-- **Stress Tests**: Many parallel tasks
-- **Coordination Overhead**: Overhead measurement
+### 15.4 Performance Test Updates
+**Files:** 
+- `tests/test_runner_performance.py` (updated)
+- `tests/test_parallel_runners.py` (updated)
 
-**Key Features**:
-- Uses `@pytest.mark.performance` and `@pytest.mark.slow` markers
-- Measures execution time, memory usage, throughput
-- Compares parallel vs sequential performance
-- Tests resource conflict detection
-- Validates coordination overhead
+Updated existing performance tests to include LLM measurements:
 
-**Test Count**: 30+ performance tests
+**test_runner_performance.py additions:**
+- `test_llm_call_performance`: Measures LLM call impact on total execution time
+- `test_token_usage_tracking`: Validates token usage tracking
+- `test_external_service_call_overhead`: Measures overhead of all external service calls
+- `test_llm_vs_non_llm_performance`: Compares execution with and without LLM calls
 
-## Test Statistics
+**test_parallel_runners.py additions:**
+- `test_parallel_llm_performance`: Tests LLM performance in parallel execution scenarios
 
-### Total Tests Created
-- Integration tests: 15+
-- Docker tests: 30+
-- Kubernetes tests: 40+
-- Performance tests: 30+
-- **Total: 115+ tests**
+**Key Metrics Tracked:**
+- LLM call duration and percentage of total time
+- Token usage per request
+- External service call overhead
+- LLM vs non-LLM performance comparison
+- Parallel LLM speedup
 
-### Test Coverage
-- ✅ All execution environments (local, Docker, Kubernetes)
-- ✅ Complete task execution flow
-- ✅ Error handling and recovery
-- ✅ Resource management and limits
-- ✅ Parallel execution and coordination
-- ✅ Performance and scalability
-- ✅ Security and secrets management
+## Test Organization
 
-## Test Execution
+### Test Markers
+- `@pytest.mark.integration` - Integration tests requiring external services
+- `@pytest.mark.llm` - LLM-specific tests
+- `@pytest.mark.e2e` - End-to-end tests
+- `@pytest.mark.performance` - Performance tests
+- `@pytest.mark.slow` - Slow-running tests
+- `@pytest.mark.stress` - Stress tests
+- `@pytest.mark.benchmark` - Benchmark tests
+- `@pytest.mark.quality` - Code quality tests
 
 ### Running Tests
 
 ```bash
-# Run all integration tests
-pytest tests/test_runner_integration.py -v
+# Run all integration tests (requires services)
+pytest tests/test_external_services_integration.py -v -m integration
 
-# Run Docker tests (requires Docker)
-pytest tests/test_docker_runner.py -v
+# Run LLM tests (requires API key)
+pytest tests/test_llm_integration.py -v -m llm
 
-# Run Kubernetes tests (requires kubectl and cluster)
-pytest tests/test_kubernetes_runner.py -v
+# Run E2E tests
+pytest tests/test_runner_e2e.py -v -m e2e
 
 # Run performance tests
 pytest tests/test_runner_performance.py -v -m performance
-
-# Run parallel execution tests
 pytest tests/test_parallel_runners.py -v -m performance
 
-# Run all integration tests
-pytest tests/test_runner_integration.py tests/test_docker_runner.py tests/test_kubernetes_runner.py -v
+# Skip integration tests
+SKIP_INTEGRATION_TESTS=true pytest tests/
 
-# Run all performance tests
-pytest tests/test_runner_performance.py tests/test_parallel_runners.py -v -m performance
+# Skip LLM tests
+SKIP_LLM_TESTS=true pytest tests/
+
+# Skip E2E tests
+SKIP_E2E_TESTS=true pytest tests/
 ```
 
-### Test Markers
+### Environment Variables
 
-The tests use custom pytest markers:
-- `@pytest.mark.performance`: Performance-related tests
-- `@pytest.mark.slow`: Slow-running tests
-- `@pytest.mark.integration`: Integration tests
-- `@pytest.mark.benchmark`: Benchmark tests
+**External Services:**
+- `TASK_REGISTRY_URL` - Task Registry endpoint (default: http://localhost:8080)
+- `REPO_POOL_URL` - Repo Pool Manager endpoint (default: http://localhost:8081)
+- `ARTIFACT_STORE_URL` - Artifact Store endpoint (default: http://localhost:8082)
+- `SKIP_INTEGRATION_TESTS` - Skip integration tests (default: true)
 
-To register these markers, add to `pytest.ini` or `pyproject.toml`:
+**LLM Service:**
+- `OPENAI_API_KEY` - OpenAI API key (required for LLM tests)
+- `SKIP_LLM_TESTS` - Skip LLM tests (default: true)
 
-```ini
-[pytest]
-markers =
-    performance: Performance tests
-    slow: Slow-running tests
-    integration: Integration tests
-    benchmark: Benchmark tests
-```
+**E2E Tests:**
+- `SKIP_E2E_TESTS` - Skip E2E tests (default: true)
 
-## Test Design Principles
+## Test Coverage
 
-### 1. Isolation
-- Each test uses temporary workspaces
-- Tests clean up after themselves
-- No shared state between tests
+### Requirements Coverage
 
-### 2. Mocking
-- TaskExecutor is mocked to avoid requiring Kiro API
-- Simple implementations simulate real work
-- Focus on orchestration, not implementation details
+**Requirement 15.1-15.4 (External Services):**
+- ✅ Task Registry integration
+- ✅ Repo Pool Manager integration
+- ✅ Artifact Store integration
+- ✅ Cross-service workflows
+- ✅ Error handling
+- ✅ Performance testing
 
-### 3. Environment Detection
-- Docker tests skip if Docker not available
-- Kubernetes tests skip if kubectl not available
-- Graceful degradation for missing dependencies
+**Requirement 16.1-16.6 (LLM Integration):**
+- ✅ API key management
+- ✅ Model configuration
+- ✅ Timeout handling
+- ✅ Token usage tracking
+- ✅ Rate limiting
+- ✅ Service availability
 
-### 4. Realistic Scenarios
-- Tests use real Git operations where possible
-- Temporary Git repositories for testing
-- Realistic task contexts and configurations
+**All Requirements (E2E):**
+- ✅ Complete workflow execution
+- ✅ Failure scenarios
+- ✅ Network errors
+- ✅ Recovery mechanisms
+- ✅ Concurrent execution
+- ✅ Performance benchmarks
 
-### 5. Performance Measurement
-- Time measurements for all operations
-- Memory usage tracking
-- Throughput calculations
-- Comparison of parallel vs sequential
+## Statistics
 
-## Known Limitations
+**Total Tests Created:** 61 new integration tests
+- External Services: 23 tests
+- LLM Integration: 20 tests
+- End-to-End: 18 tests
 
-### 1. Git Remote Operations
-Some tests require Git remotes (origin) which may not be available in isolated test environments. These tests will fail with "origin does not appear to be a git repository" errors. This is expected and can be resolved by:
-- Using a real Git repository with remotes
-- Mocking Git operations
-- Skipping tests that require remotes
+**Total Tests Updated:** 5 performance tests enhanced with LLM metrics
 
-### 2. Docker Availability
-Docker tests are automatically skipped if Docker is not available. To run these tests:
-- Install Docker
-- Ensure Docker daemon is running
-- Ensure user has Docker permissions
+**Test Files:**
+- `tests/test_external_services_integration.py` (new, 500+ lines)
+- `tests/test_llm_integration.py` (new, 700+ lines)
+- `tests/test_runner_e2e.py` (new, 800+ lines)
+- `tests/test_runner_performance.py` (updated)
+- `tests/test_parallel_runners.py` (updated)
 
-### 3. Kubernetes Availability
-Kubernetes tests are automatically skipped if kubectl is not available or cannot connect to a cluster. To run these tests:
-- Install kubectl
-- Configure cluster access
-- Ensure cluster is accessible
+## Key Features
 
-### 4. Performance Test Variability
-Performance tests may show variability based on:
-- System load
-- Available resources
-- Disk I/O speed
-- Network conditions
-
-## Requirements Coverage
-
-All requirements from the Agent Runner specification are covered:
-
-- ✅ **Requirement 9.3**: Docker execution environment
-- ✅ **Requirement 9.4**: Kubernetes execution environment
-- ✅ **Requirement 14.1**: Parallel execution support
-- ✅ **Requirement 14.2**: Resource conflict detection
-- ✅ **Requirement 14.3**: Concurrent runner tracking
-- ✅ **Requirement 14.4**: Parallel execution metrics
-- ✅ **Requirement 14.5**: Maximum parallel execution limits
-- ✅ **All other requirements**: Covered through integration tests
+1. **Comprehensive Coverage**: Tests cover all external service integrations, LLM operations, and complete workflows
+2. **Configurable**: All tests can be skipped via environment variables
+3. **Realistic Scenarios**: Tests include failure scenarios, network errors, and recovery mechanisms
+4. **Performance Focused**: Extensive performance measurements including LLM call overhead
+5. **Production Ready**: Tests validate real-world usage patterns and edge cases
+6. **Well Documented**: Each test has clear docstrings explaining purpose and requirements
 
 ## Next Steps
 
-### Recommended Improvements
+To run these tests in a CI/CD environment:
 
-1. **Add pytest.ini Configuration**
-   - Register custom markers
-   - Configure test discovery
-   - Set default options
+1. **Set up external services** (Task Registry, Repo Pool Manager, Artifact Store)
+2. **Configure environment variables** with service URLs
+3. **Provide API keys** for LLM testing (optional)
+4. **Run tests in stages**:
+   - Unit tests (fast, no external dependencies)
+   - Integration tests (requires services)
+   - E2E tests (full workflow)
+   - Performance tests (benchmarking)
 
-2. **Add CI/CD Integration**
-   - Run tests in CI pipeline
-   - Generate coverage reports
-   - Performance regression detection
+## Notes
 
-3. **Add More Mocking**
-   - Mock Git operations for tests requiring remotes
-   - Mock external services (Artifact Store, Task Registry)
-   - Reduce test dependencies
+- Integration tests are skipped by default to avoid requiring external services during development
+- LLM tests are skipped by default to avoid API costs
+- E2E tests are skipped by default as they can be slow
+- All tests use mocking where appropriate to enable fast, reliable testing
+- Performance tests provide baseline metrics for regression detection
 
-4. **Add Performance Baselines**
-   - Store baseline performance metrics
-   - Compare against baselines in CI
-   - Alert on performance regressions
+## Requirements Satisfied
 
-5. **Add Integration Test Suite**
-   - End-to-end tests with real services
-   - Docker Compose for service orchestration
-   - Full workflow validation
+✅ **15.1**: External service integration tests implemented  
+✅ **15.2**: LLM integration tests implemented  
+✅ **15.3**: End-to-end tests implemented  
+✅ **15.4**: Performance tests updated with LLM metrics  
 
-## Conclusion
-
-Task 15 is complete with comprehensive integration tests covering:
-- ✅ Actual task execution (15.1)
-- ✅ Docker execution (15.2)
-- ✅ Kubernetes execution (15.3)
-- ✅ Performance testing (15.4)
-
-All tests are properly structured, documented, and follow best practices. The test suite provides excellent coverage of the Agent Runner functionality and will help ensure quality and prevent regressions.
+All subtasks completed successfully!

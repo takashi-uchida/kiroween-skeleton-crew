@@ -5,9 +5,10 @@ This example shows how to:
 1. Configure timeout limits
 2. Configure resource limits (memory, CPU)
 3. Monitor resource usage during execution
-4. Handle timeout and resource limit errors
+4. Track LLM and external service call times
+5. Handle timeout and resource limit errors
 
-Requirements: 11.1, 11.2, 11.3, 11.4, 11.5
+Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 16.3
 """
 
 import logging
@@ -20,6 +21,7 @@ from necrocode.agent_runner import (
     ResourceUsage,
     RunnerConfig,
     RunnerOrchestrator,
+    ServiceCallTracker,
     TaskContext,
     TimeoutManager,
 )
@@ -289,6 +291,197 @@ def example_timeout_callback():
     timeout_mgr.stop()
 
 
+def example_service_call_tracking():
+    """
+    Example 6: ServiceCallTracker for LLM and external service monitoring.
+    
+    Demonstrates tracking service call times and generating statistics.
+    """
+    print("\n" + "=" * 60)
+    print("Example 6: Service Call Tracking")
+    print("=" * 60)
+    
+    # Create service call tracker
+    tracker = ServiceCallTracker()
+    print("Service call tracker created")
+    
+    # Simulate LLM calls
+    print("\nSimulating LLM calls...")
+    tracker.record_call(
+        service_name="openai",
+        operation="generate_code",
+        duration_seconds=2.5,
+        success=True,
+        metadata={"tokens_used": 1500, "model": "gpt-4"}
+    )
+    print("  ✓ Recorded OpenAI call: 2.5s, 1500 tokens")
+    
+    time.sleep(0.1)
+    
+    tracker.record_call(
+        service_name="openai",
+        operation="generate_code",
+        duration_seconds=3.2,
+        success=True,
+        metadata={"tokens_used": 2000, "model": "gpt-4"}
+    )
+    print("  ✓ Recorded OpenAI call: 3.2s, 2000 tokens")
+    
+    # Simulate external service calls
+    print("\nSimulating external service calls...")
+    tracker.record_call(
+        service_name="task_registry",
+        operation="update_task_status",
+        duration_seconds=0.5,
+        success=True
+    )
+    print("  ✓ Recorded Task Registry call: 0.5s")
+    
+    tracker.record_call(
+        service_name="repo_pool",
+        operation="allocate_slot",
+        duration_seconds=0.8,
+        success=True
+    )
+    print("  ✓ Recorded Repo Pool call: 0.8s")
+    
+    tracker.record_call(
+        service_name="artifact_store",
+        operation="upload",
+        duration_seconds=1.2,
+        success=True,
+        metadata={"size_bytes": 1024000}
+    )
+    print("  ✓ Recorded Artifact Store call: 1.2s")
+    
+    # Simulate a failed call
+    tracker.record_call(
+        service_name="task_registry",
+        operation="add_event",
+        duration_seconds=0.3,
+        success=False,
+        error="Connection timeout"
+    )
+    print("  ✗ Recorded failed Task Registry call: 0.3s")
+    
+    # Get statistics
+    print("\n" + "-" * 60)
+    print("LLM Statistics:")
+    print("-" * 60)
+    llm_stats = tracker.get_llm_statistics()
+    print(f"  Total calls: {llm_stats['total_calls']}")
+    print(f"  Total duration: {llm_stats['total_duration_seconds']:.2f}s")
+    print(f"  Average duration: {llm_stats['average_duration_seconds']:.2f}s")
+    print(f"  Total tokens used: {llm_stats['total_tokens_used']}")
+    
+    print("\n" + "-" * 60)
+    print("External Service Statistics:")
+    print("-" * 60)
+    ext_stats = tracker.get_external_service_statistics()
+    print(f"  Total calls: {ext_stats['total_calls']}")
+    print(f"  Total duration: {ext_stats['total_duration_seconds']:.2f}s")
+    print(f"  Average duration: {ext_stats['average_duration_seconds']:.2f}s")
+    
+    print("\n  By service:")
+    for service_name, stats in ext_stats['by_service'].items():
+        print(f"    {service_name}:")
+        print(f"      Calls: {stats['total_calls']}")
+        print(f"      Duration: {stats['total_duration_seconds']:.2f}s")
+        print(f"      Average: {stats['average_duration_seconds']:.2f}s")
+    
+    print("\n" + "-" * 60)
+    print("All Service Statistics:")
+    print("-" * 60)
+    all_stats = tracker.get_service_statistics()
+    print(f"  Total calls: {all_stats['total_calls']}")
+    print(f"  Successful: {all_stats['successful_calls']}")
+    print(f"  Failed: {all_stats['failed_calls']}")
+    print(f"  Total duration: {all_stats['total_duration_seconds']:.2f}s")
+
+
+def example_execution_monitor_with_service_tracking():
+    """
+    Example 7: ExecutionMonitor with service call tracking.
+    
+    Demonstrates unified monitoring with service call tracking.
+    """
+    print("\n" + "=" * 60)
+    print("Example 7: ExecutionMonitor with Service Tracking")
+    print("=" * 60)
+    
+    # Create execution monitor with service tracking
+    exec_mon = ExecutionMonitor(
+        timeout_seconds=30,
+        max_memory_mb=500,
+        track_service_calls=True
+    )
+    
+    print("Execution monitor created with service call tracking")
+    
+    # Start monitoring
+    exec_mon.start()
+    print("Monitoring started...")
+    
+    # Simulate work with service calls
+    print("\nSimulating task execution with service calls...")
+    
+    # LLM call
+    time.sleep(0.5)
+    exec_mon.record_service_call(
+        service_name="openai",
+        operation="generate_code",
+        duration_seconds=2.5,
+        success=True,
+        metadata={"tokens_used": 1500}
+    )
+    print("  ✓ LLM call completed: 2.5s")
+    
+    # External service calls
+    time.sleep(0.2)
+    exec_mon.record_service_call(
+        service_name="task_registry",
+        operation="update_status",
+        duration_seconds=0.3,
+        success=True
+    )
+    print("  ✓ Task Registry call completed: 0.3s")
+    
+    time.sleep(0.2)
+    exec_mon.record_service_call(
+        service_name="artifact_store",
+        operation="upload",
+        duration_seconds=1.0,
+        success=True
+    )
+    print("  ✓ Artifact Store call completed: 1.0s")
+    
+    # Get comprehensive status
+    status = exec_mon.get_status()
+    
+    print("\n" + "-" * 60)
+    print("Execution Status:")
+    print("-" * 60)
+    print(f"  Elapsed: {status['elapsed_seconds']:.2f}s")
+    print(f"  Remaining: {status['remaining_seconds']:.2f}s")
+    
+    if "service_calls" in status:
+        print("\n  Service Calls:")
+        sc = status["service_calls"]
+        
+        if "llm" in sc:
+            print(f"    LLM calls: {sc['llm']['total_calls']}")
+            print(f"    LLM duration: {sc['llm']['total_duration_seconds']:.2f}s")
+            print(f"    LLM tokens: {sc['llm']['total_tokens_used']}")
+        
+        if "external_services" in sc:
+            print(f"    External calls: {sc['external_services']['total_calls']}")
+            print(f"    External duration: {sc['external_services']['total_duration_seconds']:.2f}s")
+    
+    # Stop monitoring
+    exec_mon.stop()
+    print("\nMonitoring stopped")
+
+
 def main():
     """Run all examples."""
     print("\n" + "=" * 60)
@@ -310,6 +503,12 @@ def main():
         
         # Example 5: Timeout callback
         example_timeout_callback()
+        
+        # Example 6: Service call tracking
+        example_service_call_tracking()
+        
+        # Example 7: Execution monitor with service tracking
+        example_execution_monitor_with_service_tracking()
         
         print("\n" + "=" * 60)
         print("All examples completed!")

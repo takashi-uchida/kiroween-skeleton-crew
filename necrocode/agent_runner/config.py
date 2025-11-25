@@ -104,11 +104,23 @@ class RunnerConfig:
     
     # Task Registry
     task_registry_path: Optional[Path] = None
+    task_registry_url: Optional[str] = None  # REST API URL for Task Registry
+    
+    # Repo Pool Manager
+    repo_pool_url: Optional[str] = None  # REST API URL for Repo Pool Manager
     
     # Playbook
     default_playbook_path: Optional[Path] = None
     
-    # Kiro integration
+    # LLM Configuration
+    llm_api_key: Optional[str] = None  # LLM API key (e.g., OpenAI)
+    llm_api_key_env_var: str = "LLM_API_KEY"
+    llm_model: str = "gpt-4"
+    llm_endpoint: Optional[str] = None
+    llm_timeout_seconds: int = 120
+    llm_max_tokens: int = 4000
+    
+    # Kiro integration (legacy)
     kiro_api_url: Optional[str] = None
     kiro_api_key_env_var: str = "KIRO_API_KEY"
     
@@ -165,7 +177,15 @@ class RunnerConfig:
             "artifact_store_url": self.artifact_store_url,
             "artifact_store_api_key_env_var": self.artifact_store_api_key_env_var,
             "task_registry_path": str(self.task_registry_path) if self.task_registry_path else None,
+            "task_registry_url": self.task_registry_url,
+            "repo_pool_url": self.repo_pool_url,
             "default_playbook_path": str(self.default_playbook_path) if self.default_playbook_path else None,
+            "llm_api_key": self.llm_api_key,
+            "llm_api_key_env_var": self.llm_api_key_env_var,
+            "llm_model": self.llm_model,
+            "llm_endpoint": self.llm_endpoint,
+            "llm_timeout_seconds": self.llm_timeout_seconds,
+            "llm_max_tokens": self.llm_max_tokens,
             "kiro_api_url": self.kiro_api_url,
             "kiro_api_key_env_var": self.kiro_api_key_env_var,
             "message_bus_config": self.message_bus_config,

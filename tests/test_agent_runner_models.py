@@ -25,6 +25,10 @@ from necrocode.agent_runner.models import (
     RunnerResult,
     PlaybookStep,
     Playbook,
+    SlotAllocation,
+    CodeChange,
+    LLMResponse,
+    LLMConfig,
 )
 
 
@@ -282,6 +286,8 @@ class TestImplementationResult:
             diff="diff content",
             files_changed=["file1.py", "file2.py"],
             duration_seconds=45.2,
+            llm_model="gpt-4",
+            tokens_used=1500,
             error=None,
             review_result={"approved": True},
             pair_session_id="session-123",
@@ -293,6 +299,8 @@ class TestImplementationResult:
         assert data["diff"] == "diff content"
         assert data["files_changed"] == ["file1.py", "file2.py"]
         assert data["duration_seconds"] == 45.2
+        assert data["llm_model"] == "gpt-4"
+        assert data["tokens_used"] == 1500
         assert data["error"] is None
         assert data["review_result"] == {"approved": True}
         assert data["pair_session_id"] == "session-123"
@@ -304,6 +312,8 @@ class TestImplementationResult:
             "diff": "",
             "files_changed": [],
             "duration_seconds": 10.0,
+            "llm_model": None,
+            "tokens_used": None,
             "error": "Implementation failed",
             "review_result": None,
             "pair_session_id": None,
@@ -313,6 +323,8 @@ class TestImplementationResult:
         
         assert result.success is False
         assert result.error == "Implementation failed"
+        assert result.llm_model is None
+        assert result.tokens_used is None
     
     def test_roundtrip(self):
         """Test serialization roundtrip."""
@@ -321,6 +333,8 @@ class TestImplementationResult:
             diff="test diff",
             files_changed=["test.py"],
             duration_seconds=30.0,
+            llm_model="gpt-3.5-turbo",
+            tokens_used=800,
         )
         
         data = original.to_dict()
@@ -329,6 +343,22 @@ class TestImplementationResult:
         assert restored.success == original.success
         assert restored.diff == original.diff
         assert restored.files_changed == original.files_changed
+        assert restored.llm_model == original.llm_model
+        assert restored.tokens_used == original.tokens_used
+    
+    def test_new_fields(self):
+        """Test new LLM-related fields."""
+        result = ImplementationResult(
+            success=True,
+            diff="diff",
+            files_changed=["file.py"],
+            duration_seconds=20.0,
+            llm_model="gpt-4-turbo",
+            tokens_used=2000,
+        )
+        
+        assert result.llm_model == "gpt-4-turbo"
+        assert result.tokens_used == 2000
 
 
 class TestSingleTestResult:
@@ -783,6 +813,262 @@ class TestPlaybook:
         assert len(restored.steps) == len(original.steps)
 
 
+class TestSlotAllocation:
+    """Tests for SlotAllocation model."""
+    
+    def test_to_dict(self):
+        """Test SlotAllocation serialization."""
+        allocation = SlotAllocation(
+            slot_id="slot-123",
+            slot_path=Path("/tmp/repo-pool/slot-123"),
+        )
+        
+        data = allocation.to_dict()
+        
+        assert data["slot_id"] == "slot-123"
+        assert data["slot_path"] == "/tmp/repo-pool/slot-123"
+    
+    def test_from_dict(self):
+        """Test SlotAllocation deserialization."""
+        data = {
+            "slot_id": "slot-456",
+            "slot_path": "/home/user/slots/slot-456",
+        }
+        
+        allocation = SlotAllocation.from_dict(data)
+        
+        assert allocation.slot_id == "slot-456"
+        assert allocation.slot_path == Path("/home/user/slots/slot-456")
+    
+    def test_roundtrip(self):
+        """Test serialization roundtrip."""
+        original = SlotAllocation(
+            slot_id="slot-789",
+            slot_path=Path("/var/pool/slot-789"),
+        )
+        
+        data = original.to_dict()
+        restored = SlotAllocation.from_dict(data)
+        
+        assert restored.slot_id == original.slot_id
+        assert restored.slot_path == original.slot_path
+
+
+class TestCodeChange:
+    """Tests for CodeChange model."""
+    
+    def test_to_dict_create(self):
+        """Test CodeChange serialization for create operation."""
+        change = CodeChange(
+            file_path="src/new_file.py",
+            operation="create",
+            content="def hello():\n    print('Hello')",
+        )
+        
+        data = change.to_dict()
+        
+        assert data["file_path"] == "src/new_file.py"
+        assert data["operation"] == "create"
+        assert data["content"] == "def hello():\n    print('Hello')"
+    
+    def test_to_dict_modify(self):
+        """Test CodeChange serialization for modify operation."""
+        change = CodeChange(
+            file_path="src/existing.py",
+            operation="modify",
+            content="updated content",
+        )
+        
+        data = change.to_dict()
+        
+        assert data["operation"] == "modify"
+        assert data["content"] == "updated content"
+    
+    def test_to_dict_delete(self):
+        """Test CodeChange serialization for delete operation."""
+        change = CodeChange(
+            file_path="src/old_file.py",
+            operation="delete",
+            content="",
+        )
+        
+        data = change.to_dict()
+        
+        assert data["operation"] == "delete"
+        assert data["content"] == ""
+    
+    def test_from_dict(self):
+        """Test CodeChange deserialization."""
+        data = {
+            "file_path": "tests/test_new.py",
+            "operation": "create",
+            "content": "import pytest\n\ndef test_example():\n    pass",
+        }
+        
+        change = CodeChange.from_dict(data)
+        
+        assert change.file_path == "tests/test_new.py"
+        assert change.operation == "create"
+        assert "import pytest" in change.content
+    
+    def test_roundtrip(self):
+        """Test serialization roundtrip."""
+        original = CodeChange(
+            file_path="config/settings.json",
+            operation="modify",
+            content='{"key": "value"}',
+        )
+        
+        data = original.to_dict()
+        restored = CodeChange.from_dict(data)
+        
+        assert restored.file_path == original.file_path
+        assert restored.operation == original.operation
+        assert restored.content == original.content
+
+
+class TestLLMResponse:
+    """Tests for LLMResponse model."""
+    
+    def test_to_dict(self):
+        """Test LLMResponse serialization."""
+        code_changes = [
+            CodeChange(
+                file_path="src/main.py",
+                operation="create",
+                content="print('Hello')",
+            ),
+            CodeChange(
+                file_path="src/utils.py",
+                operation="modify",
+                content="def util(): pass",
+            ),
+        ]
+        
+        response = LLMResponse(
+            code_changes=code_changes,
+            explanation="Created main.py and updated utils.py",
+            model="gpt-4",
+            tokens_used=1200,
+        )
+        
+        data = response.to_dict()
+        
+        assert len(data["code_changes"]) == 2
+        assert data["explanation"] == "Created main.py and updated utils.py"
+        assert data["model"] == "gpt-4"
+        assert data["tokens_used"] == 1200
+    
+    def test_from_dict(self):
+        """Test LLMResponse deserialization."""
+        data = {
+            "code_changes": [
+                {
+                    "file_path": "README.md",
+                    "operation": "modify",
+                    "content": "# Updated README",
+                }
+            ],
+            "explanation": "Updated documentation",
+            "model": "gpt-3.5-turbo",
+            "tokens_used": 500,
+        }
+        
+        response = LLMResponse.from_dict(data)
+        
+        assert len(response.code_changes) == 1
+        assert response.code_changes[0].file_path == "README.md"
+        assert response.model == "gpt-3.5-turbo"
+        assert response.tokens_used == 500
+    
+    def test_roundtrip(self):
+        """Test serialization roundtrip."""
+        original = LLMResponse(
+            code_changes=[
+                CodeChange(
+                    file_path="test.py",
+                    operation="create",
+                    content="test",
+                )
+            ],
+            explanation="Test change",
+            model="gpt-4-turbo",
+            tokens_used=800,
+        )
+        
+        data = original.to_dict()
+        restored = LLMResponse.from_dict(data)
+        
+        assert len(restored.code_changes) == len(original.code_changes)
+        assert restored.explanation == original.explanation
+        assert restored.model == original.model
+        assert restored.tokens_used == original.tokens_used
+
+
+class TestLLMConfig:
+    """Tests for LLMConfig model."""
+    
+    def test_to_dict(self):
+        """Test LLMConfig serialization."""
+        config = LLMConfig(
+            api_key="sk-test-key-123",
+            model="gpt-4",
+            endpoint="https://api.openai.com/v1",
+            timeout_seconds=120,
+            max_tokens=4000,
+        )
+        
+        data = config.to_dict()
+        
+        assert data["api_key"] == "sk-test-key-123"
+        assert data["model"] == "gpt-4"
+        assert data["endpoint"] == "https://api.openai.com/v1"
+        assert data["timeout_seconds"] == 120
+        assert data["max_tokens"] == 4000
+    
+    def test_from_dict(self):
+        """Test LLMConfig deserialization."""
+        data = {
+            "api_key": "sk-another-key",
+            "model": "gpt-3.5-turbo",
+            "endpoint": None,
+            "timeout_seconds": 60,
+            "max_tokens": 2000,
+        }
+        
+        config = LLMConfig.from_dict(data)
+        
+        assert config.api_key == "sk-another-key"
+        assert config.model == "gpt-3.5-turbo"
+        assert config.endpoint is None
+        assert config.timeout_seconds == 60
+        assert config.max_tokens == 2000
+    
+    def test_roundtrip(self):
+        """Test serialization roundtrip."""
+        original = LLMConfig(
+            api_key="sk-test",
+            model="gpt-4-turbo",
+            timeout_seconds=180,
+        )
+        
+        data = original.to_dict()
+        restored = LLMConfig.from_dict(data)
+        
+        assert restored.api_key == original.api_key
+        assert restored.model == original.model
+        assert restored.timeout_seconds == original.timeout_seconds
+    
+    def test_default_values(self):
+        """Test LLMConfig default values."""
+        config = LLMConfig(api_key="sk-test")
+        
+        assert config.model == "gpt-4"
+        assert config.endpoint is None
+        assert config.timeout_seconds == 120
+        assert config.max_tokens == 4000
+
+
 class TestJSONSerialization:
     """Tests for JSON serialization of all models."""
     
@@ -824,6 +1110,29 @@ class TestJSONSerialization:
         
         assert restored.success == original.success
         assert restored.runner_id == original.runner_id
+    
+    def test_llm_response_json_roundtrip(self):
+        """Test LLMResponse can be serialized to JSON and back."""
+        original = LLMResponse(
+            code_changes=[
+                CodeChange(
+                    file_path="src/app.py",
+                    operation="create",
+                    content="# App code",
+                )
+            ],
+            explanation="Created app",
+            model="gpt-4",
+            tokens_used=1000,
+        )
+        
+        json_str = json.dumps(original.to_dict())
+        data = json.loads(json_str)
+        restored = LLMResponse.from_dict(data)
+        
+        assert restored.model == original.model
+        assert restored.tokens_used == original.tokens_used
+        assert len(restored.code_changes) == len(original.code_changes)
 
 
 if __name__ == "__main__":

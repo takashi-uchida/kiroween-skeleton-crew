@@ -2,20 +2,56 @@
 
 Agent Runnerは、NecroCodeシステムにおいてタスクを実行するステートレスなワーカーコンポーネントです。コンテナベースで起動し、Repo Pool Managerから割り当てられたワークスペースで、fetch→rebase→branch→実装→テスト→pushの一連の処理を自動実行します。
 
+## アーキテクチャ
+
+Agent Runnerは以下の外部サービスと統合されています：
+
+- **LLM Service (OpenAI等)**: コード生成エンジン
+- **Task Registry**: タスク状態管理とイベント記録
+- **Repo Pool Manager**: ワークスペース（スロット）の割り当て・返却
+- **Artifact Store**: 成果物（diff、ログ、テスト結果）の保存
+
+```
+┌──────────────┐
+│  Dispatcher  │ ──HTTP/gRPC──► ┌──────────────┐
+└──────────────┘                │ Agent Runner │
+                                └──────────────┘
+┌──────────────┐                       │
+│Task Registry │ ◄──REST API───────────┤
+└──────────────┘                       │
+                                       │
+┌──────────────┐                       │
+│ Repo Pool    │ ◄──REST API───────────┤
+│ Manager      │                       │
+└──────────────┘                       │
+                                       │
+┌──────────────┐                       │
+│ Artifact     │ ◄──REST API───────────┤
+│ Store        │                       │
+└──────────────┘                       │
+                                       │
+┌──────────────┐                       │
+│ LLM Service  │ ◄──OpenAI API─────────┘
+│ (OpenAI)     │
+└──────────────┘
+```
+
 ## 特徴
 
 - **ステートレス設計**: 完全にステートレスで、水平スケールが可能
+- **LLM統合**: OpenAI等のLLMサービスを使用してコードを自動生成
+- **外部サービス統合**: Task Registry、Repo Pool Manager、Artifact Storeと連携
 - **複数の実行環境**: local-process/docker/k8sをサポート
 - **Playbook対応**: YAML形式のPlaybookでタスク実行手順をカスタマイズ可能
 - **自動テスト実行**: 実装後に自動的にテストを実行
 - **成果物管理**: diff、ログ、テスト結果をArtifact Storeにアップロード
-- **エラーリトライ**: Git操作やネットワークエラーを自動的にリトライ
+- **エラーリトライ**: Git操作、ネットワークエラー、LLMレート制限を自動的にリトライ
 
 ## インストール
 
 ```bash
 # 基本的な依存関係
-pip install gitpython pyyaml requests psutil
+pip install gitpython pyyaml requests psutil openai
 
 # Dockerモード用（オプション）
 pip install docker
@@ -50,22 +86,45 @@ task_context = TaskContext(
 )
 ```
 
-### 2. Runnerの実行
+### 2. LLM設定
 
 ```python
-# Runner設定
+from necrocode.agent_runner import LLMConfig
+
+# LLM設定を作成
+llm_config = LLMConfig(
+    api_key="your-openai-api-key",  # または環境変数 OPENAI_API_KEY
+    model="gpt-4",
+    timeout_seconds=120
+)
+```
+
+### 3. 外部サービス設定
+
+```python
+# Runner設定（外部サービスのURLを指定）
 config = RunnerConfig(
     execution_mode="local-process",
     default_timeout_seconds=1800,
-    log_level="INFO"
+    log_level="INFO",
+    task_registry_url="http://localhost:8001",
+    repo_pool_url="http://localhost:8002",
+    artifact_store_url="http://localhost:8003",
+    llm_config=llm_config
 )
+```
 
+### 4. Runnerの実行
+
+```python
 # Runnerを作成して実行
 orchestrator = RunnerOrchestrator(config)
 result = orchestrator.run(task_context)
 
 if result.success:
     print(f"タスク完了: {result.artifacts}")
+    print(f"LLMモデル: {result.impl_result.llm_model}")
+    print(f"トークン使用量: {result.impl_result.tokens_used}")
 else:
     print(f"タスク失敗: {result.error}")
 ```
@@ -155,12 +214,21 @@ class RunnerConfig:
     # 実行環境
     execution_mode: str = "local-process"  # local-process/docker/kubernetes
     
+    # 外部サービス
+    task_registry_url: str = "http://localhost:8001"
+    repo_pool_url: str = "http://localhost:8002"
+    artifact_store_url: str = "http://localhost:8003"
+    
+    # LLM設定
+    llm_config: Optional[LLMConfig] = None
+    
     # タイムアウト
     default_timeout_seconds: int = 1800  # 30分
     
     # リトライ
     git_retry_count: int = 3
     network_retry_count: int = 3
+    llm_retry_count: int = 3
     
     # リソース制限
     max_memory_mb: Optional[int] = None
@@ -172,10 +240,19 @@ class RunnerConfig:
     
     # セキュリティ
     git_token_env_var: str = "GIT_TOKEN"
+    llm_api_key_env_var: str = "OPENAI_API_KEY"
     mask_secrets: bool = True
-    
-    # Artifact Store
-    artifact_store_url: str = "file://~/.necrocode/artifacts"
+```
+
+### LLMConfig
+
+```python
+@dataclass
+class LLMConfig:
+    api_key: str                          # LLM APIキー
+    model: str = "gpt-4"                  # モデル名
+    endpoint: Optional[str] = None        # カスタムエンドポイント
+    timeout_seconds: int = 120            # タイムアウト
 ```
 
 ## 環境変数
@@ -183,7 +260,10 @@ class RunnerConfig:
 | 変数名 | 説明 | デフォルト |
 |--------|------|-----------|
 | `GIT_TOKEN` | Gitリポジトリへのアクセストークン | - |
-| `ARTIFACT_STORE_URL` | Artifact StoreのURL | `file://~/.necrocode/artifacts` |
+| `OPENAI_API_KEY` | OpenAI APIキー | - |
+| `TASK_REGISTRY_URL` | Task RegistryのURL | `http://localhost:8001` |
+| `REPO_POOL_URL` | Repo Pool ManagerのURL | `http://localhost:8002` |
+| `ARTIFACT_STORE_URL` | Artifact StoreのURL | `http://localhost:8003` |
 | `RUNNER_LOG_LEVEL` | ログレベル | `INFO` |
 | `RUNNER_TIMEOUT` | タスクのタイムアウト（秒） | `1800` |
 
@@ -217,12 +297,68 @@ class WorkspaceManager:
 
 ### TaskExecutor
 
-タスクの実装を実行。
+タスクの実装を実行（LLMを使用してコードを生成）。
 
 ```python
 class TaskExecutor:
+    def __init__(self, llm_config: LLMConfig):
+        self.llm_client = LLMClient(llm_config)
+    
     def execute(self, task_context: TaskContext, workspace: Workspace) -> ImplementationResult:
-        """タスクを実装"""
+        """タスクを実装（LLMでコード生成）"""
+```
+
+### LLMClient
+
+LLMサービスとの通信を管理。
+
+```python
+class LLMClient:
+    def __init__(self, config: LLMConfig):
+        self.config = config
+    
+    def generate_code(
+        self,
+        prompt: str,
+        workspace_path: Path,
+        max_tokens: int = 4000
+    ) -> LLMResponse:
+        """コードを生成"""
+```
+
+### 外部サービスクライアント
+
+#### TaskRegistryClient
+
+```python
+class TaskRegistryClient:
+    def update_task_status(self, task_id: str, status: str) -> None:
+        """タスク状態を更新"""
+    
+    def add_event(self, task_id: str, event_type: str, data: Dict) -> None:
+        """イベントを記録"""
+    
+    def add_artifact(self, task_id: str, artifact_type: str, uri: str) -> None:
+        """成果物を記録"""
+```
+
+#### RepoPoolClient
+
+```python
+class RepoPoolClient:
+    def allocate_slot(self, repo_url: str, required_by: str) -> SlotAllocation:
+        """スロットを割り当て"""
+    
+    def release_slot(self, slot_id: str) -> None:
+        """スロットを返却"""
+```
+
+#### ArtifactStoreClient
+
+```python
+class ArtifactStoreClient:
+    def upload(self, artifact_type: str, content: bytes) -> str:
+        """成果物をアップロード（URIを返す）"""
 ```
 
 ### TestRunner
@@ -347,11 +483,85 @@ config = RunnerConfig(git_retry_count=5)
 config = RunnerConfig(max_memory_mb=2048)  # 2GB
 ```
 
+## 設定ファイル例
+
+### config.yaml
+
+```yaml
+# 基本設定
+execution_mode: local-process
+default_timeout_seconds: 1800
+log_level: INFO
+
+# 外部サービス
+task_registry_url: http://localhost:8001
+repo_pool_url: http://localhost:8002
+artifact_store_url: http://localhost:8003
+
+# LLM設定
+llm:
+  model: gpt-4
+  timeout_seconds: 120
+
+# リトライ設定
+git_retry_count: 3
+network_retry_count: 3
+llm_retry_count: 3
+
+# リソース制限
+max_memory_mb: 2048
+max_cpu_percent: 80
+```
+
+### config.docker.yaml
+
+```yaml
+execution_mode: docker
+docker_image: necrocode/agent-runner:latest
+docker_volumes:
+  /var/necrocode/workspaces: /workspaces
+
+# 外部サービス（Dockerネットワーク内）
+task_registry_url: http://task-registry:8001
+repo_pool_url: http://repo-pool:8002
+artifact_store_url: http://artifact-store:8003
+
+llm:
+  model: gpt-4
+  timeout_seconds: 120
+```
+
+### config.k8s.yaml
+
+```yaml
+execution_mode: kubernetes
+k8s_namespace: necrocode
+k8s_image: necrocode/agent-runner:latest
+k8s_secrets:
+  - git-token
+  - openai-api-key
+
+# 外部サービス（Kubernetes内）
+task_registry_url: http://task-registry.necrocode.svc.cluster.local:8001
+repo_pool_url: http://repo-pool.necrocode.svc.cluster.local:8002
+artifact_store_url: http://artifact-store.necrocode.svc.cluster.local:8003
+
+llm:
+  model: gpt-4
+  timeout_seconds: 120
+
+# リソース制限
+max_memory_mb: 4096
+max_cpu_percent: 200
+```
+
 ## サンプルコード
 
 詳細なサンプルコードは `examples/` ディレクトリを参照してください。
 
-- `examples/basic_runner_usage.py` - 基本的な使用例
+- `examples/basic_runner_usage.py` - 基本的な使用例（外部サービス統合を含む）
+- `examples/llm_integration.py` - LLM統合の例
+- `examples/external_services.py` - 外部サービス統合の例
 - `examples/custom_playbook.py` - カスタムPlaybookの例
 - `examples/docker_runner.py` - Docker実行の例
 - `examples/kubernetes_runner.py` - Kubernetes実行の例

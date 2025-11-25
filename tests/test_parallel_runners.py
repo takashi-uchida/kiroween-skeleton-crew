@@ -610,5 +610,79 @@ def test_coordination_overhead(parallel_coordinator, temp_workspaces):
     assert avg_time < 0.01
 
 
+# ============================================================================
+# LLM Performance in Parallel Tests
+# ============================================================================
+
+@pytest.mark.performance
+@pytest.mark.slow
+def test_parallel_llm_performance(runner_config, temp_workspaces):
+    """Test LLM performance in parallel execution."""
+    num_tasks = 3
+    llm_call_duration = 2.0
+    
+    results = []
+    threads = []
+    
+    def run_task_with_llm(workspace, task_id):
+        runner = RunnerOrchestrator(config=runner_config)
+        task_context = create_task_context(workspace, task_id)
+        
+        # Mock LLM call
+        def mock_execute_with_llm(task_context, workspace):
+            time.sleep(llm_call_duration)
+            test_file = workspace.path / f"test_{task_id}.py"
+            test_file.write_text(f"print('test {task_id}')")
+            
+            return ImplementationResult(
+                success=True,
+                diff=f"+ test_{task_id}.py",
+                files_changed=[f"test_{task_id}.py"],
+                duration_seconds=llm_call_duration,
+                llm_model="gpt-4",
+                tokens_used=150,
+            )
+        
+        runner.task_executor.execute = mock_execute_with_llm
+        
+        result = runner.run(task_context)
+        results.append(result)
+    
+    # Execute in parallel
+    start_time = time.time()
+    
+    for i in range(num_tasks):
+        thread = threading.Thread(
+            target=run_task_with_llm,
+            args=(temp_workspaces[i], f"llm-parallel-{i}")
+        )
+        thread.start()
+        threads.append(thread)
+    
+    for thread in threads:
+        thread.join()
+    
+    total_time = time.time() - start_time
+    
+    # Calculate speedup
+    sequential_time = num_tasks * llm_call_duration
+    speedup = sequential_time / total_time
+    
+    print(f"\nParallel LLM performance:")
+    print(f"  Tasks: {num_tasks}")
+    print(f"  LLM call duration: {llm_call_duration:.2f}s each")
+    print(f"  Sequential time: {sequential_time:.2f}s")
+    print(f"  Parallel time: {total_time:.2f}s")
+    print(f"  Speedup: {speedup:.2f}x")
+    
+    # Should have some speedup
+    assert speedup > 1.5
+    
+    # Verify all succeeded
+    assert all(r.success for r in results)
+    assert all(r.impl_result.tokens_used == 150 for r in results)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-m", "performance"])
+

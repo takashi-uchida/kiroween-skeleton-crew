@@ -12,10 +12,14 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+from necrocode.agent_runner.artifact_store_client import ArtifactStoreClient
 from necrocode.agent_runner.artifact_uploader import ArtifactUploader
 from necrocode.agent_runner.config import RunnerConfig
 from necrocode.agent_runner.health_check import HealthCheckServer, create_health_check_server
+from necrocode.agent_runner.llm_client import LLMClient
 from necrocode.agent_runner.metrics import MetricsCollector
+from necrocode.agent_runner.repo_pool_client import RepoPoolClient
+from necrocode.agent_runner.task_registry_client import TaskRegistryClient
 from necrocode.agent_runner.exceptions import (
     ResourceConflictError,
     ResourceLimitError,
@@ -27,6 +31,7 @@ from necrocode.agent_runner.exceptions import (
 from necrocode.agent_runner.models import (
     Artifact,
     ImplementationResult,
+    LLMConfig,
     PushResult,
     RunnerResult,
     RunnerState,
@@ -83,7 +88,7 @@ class RunnerOrchestrator:
         Args:
             config: Runner configuration. If None, uses default config.
             
-        Requirements: 1.1, 1.3
+        Requirements: 1.1, 1.3, 15.1, 15.2, 15.3, 16.1
         """
         self.config = config or RunnerConfig()
         self.runner_id = self._generate_runner_id()
@@ -97,23 +102,69 @@ class RunnerOrchestrator:
         # Load credentials
         self._load_credentials()
         
+        # Initialize external service clients
+        self.task_registry_client: Optional[TaskRegistryClient] = None
+        if self.config.task_registry_url:
+            self.task_registry_client = TaskRegistryClient(
+                base_url=self.config.task_registry_url,
+                timeout=30
+            )
+            logger.info(f"Initialized Task Registry Client: {self.config.task_registry_url}")
+        
+        self.repo_pool_client: Optional[RepoPoolClient] = None
+        if self.config.repo_pool_url:
+            self.repo_pool_client = RepoPoolClient(
+                base_url=self.config.repo_pool_url,
+                timeout=30
+            )
+            logger.info(f"Initialized Repo Pool Client: {self.config.repo_pool_url}")
+        
+        self.artifact_store_client: Optional[ArtifactStoreClient] = None
+        if self.config.artifact_store_url:
+            self.artifact_store_client = ArtifactStoreClient(
+                base_url=self.config.artifact_store_url,
+                timeout=30
+            )
+            logger.info(f"Initialized Artifact Store Client: {self.config.artifact_store_url}")
+        
+        # Initialize LLM config
+        self.llm_config: Optional[LLMConfig] = None
+        if self.config.llm_api_key:
+            self.llm_config = LLMConfig(
+                api_key=self.config.llm_api_key,
+                model=self.config.llm_model,
+                endpoint=self.config.llm_endpoint,
+                timeout_seconds=self.config.llm_timeout_seconds,
+                max_tokens=self.config.llm_max_tokens,
+            )
+            logger.info(f"Initialized LLM Config: model={self.config.llm_model}")
+            # Mask API key
+            if self.config.mask_secrets:
+                self.secret_masker.add_secret(self.config.llm_api_key)
+        else:
+            logger.warning("LLM API key not configured - task execution will fail without LLM")
+        
         # Initialize components
         self.workspace_manager = WorkspaceManager(
             retry_config=self.config.git_retry_config
         )
-        self.task_executor = TaskExecutor()
+        # TaskExecutor can be initialized without LLM config (will fail at execution time if needed)
+        self.task_executor = TaskExecutor(llm_config=self.llm_config)
         self.test_runner = TestRunner()
-        self.artifact_uploader = ArtifactUploader(config=self.config)
+        self.artifact_uploader = ArtifactUploader(
+            artifact_store_client=self.artifact_store_client,
+            task_registry_client=self.task_registry_client
+        )
         self.playbook_engine = PlaybookEngine()
         
-        # Initialize Task Registry if available
+        # Initialize Task Registry if available (legacy support)
         self.task_registry: Optional[TaskRegistry] = None
         if TASK_REGISTRY_AVAILABLE and self.config.task_registry_path:
             try:
                 self.task_registry = TaskRegistry(
                     registry_dir=self.config.task_registry_path
                 )
-                logger.info("Initialized Task Registry")
+                logger.info("Initialized Task Registry (legacy)")
             except Exception as e:
                 logger.warning(f"Failed to initialize Task Registry: {e}")
         
@@ -174,9 +225,10 @@ class RunnerOrchestrator:
         Loads credentials for:
         - Git operations
         - Artifact Store API
-        - Kiro API
+        - LLM API
+        - Kiro API (legacy)
         
-        Requirements: 1.4, 10.1
+        Requirements: 1.4, 10.1, 16.1
         """
         logger.info("Loading credentials")
         
@@ -203,7 +255,20 @@ class RunnerOrchestrator:
                     self.secret_masker.add_secret(artifact_api_key)
                 logger.info("Artifact Store API key loaded successfully")
             
-            # Load Kiro API key if configured
+            # Load LLM API key
+            llm_api_key = self.credential_manager.get_llm_api_key(
+                env_var=self.config.llm_api_key_env_var
+            )
+            if llm_api_key:
+                # Store in config for LLMConfig initialization
+                self.config.llm_api_key = llm_api_key
+                if self.config.mask_secrets:
+                    self.secret_masker.add_secret(llm_api_key)
+                logger.info("LLM API key loaded successfully")
+            else:
+                logger.warning("LLM API key not found - LLM operations may fail")
+            
+            # Load Kiro API key if configured (legacy)
             if self.config.kiro_api_url:
                 kiro_api_key = self.credential_manager.get_api_key(
                     service="kiro",
@@ -640,6 +705,9 @@ class RunnerOrchestrator:
         """
         Prepare workspace for task execution.
         
+        If RepoPoolClient is configured, allocates a slot from the pool.
+        Otherwise, uses the slot_path from task_context directly.
+        
         Performs Git operations to set up a clean workspace:
         - Checkout base branch
         - Fetch latest changes
@@ -648,6 +716,7 @@ class RunnerOrchestrator:
         
         Args:
             task_context: Task context
+            metrics_collector: Optional metrics collector
             
         Returns:
             Workspace object
@@ -655,12 +724,29 @@ class RunnerOrchestrator:
         Raises:
             WorkspacePreparationError: If workspace preparation fails
             
-        Requirements: 2.1
+        Requirements: 2.1, 15.2
         """
         self._log(f"Preparing workspace at {task_context.slot_path}")
         self._log(f"Creating branch: {task_context.branch_name}")
         
         try:
+            # Allocate slot from Repo Pool Manager if configured
+            if self.repo_pool_client and task_context.metadata.get("repo_url"):
+                self._log("Allocating slot from Repo Pool Manager")
+                try:
+                    slot_allocation = self.repo_pool_client.allocate_slot(
+                        repo_url=task_context.metadata["repo_url"],
+                        required_by=task_context.task_id,
+                        timeout_seconds=task_context.timeout_seconds
+                    )
+                    # Update task context with allocated slot
+                    task_context.slot_id = slot_allocation.slot_id
+                    task_context.slot_path = slot_allocation.slot_path
+                    self._log(f"Slot allocated: {slot_allocation.slot_id} at {slot_allocation.slot_path}")
+                except Exception as e:
+                    self._log(f"Failed to allocate slot from Repo Pool Manager: {e}")
+                    logger.warning(f"Slot allocation failed, using provided slot_path: {e}")
+            
             # Initialize permission validator for this workspace
             self.permission_validator = PermissionValidator(
                 workspace_root=task_context.slot_path
@@ -917,54 +1003,106 @@ class RunnerOrchestrator:
         Report task completion to Task Registry.
         
         Records a TaskCompleted event in the Task Registry with
-        execution details and artifact URIs.
+        execution details and artifact URIs. Also releases the slot
+        back to Repo Pool Manager if configured.
         
         Args:
             task_context: Task context
             artifacts: List of uploaded artifacts
             
-        Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
+        Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 15.1, 15.2
         """
         self._log("Reporting task completion")
         
-        if not self.task_registry:
-            self._log("Task Registry not available, skipping completion report")
-            return
-        
-        try:
-            # Update task state to Done
-            self.task_registry.update_task_state(
-                spec_name=task_context.spec_name,
-                task_id=task_context.task_id,
-                new_state=TaskState.DONE
-            )
-            
-            # Record TaskCompleted event
-            event_data = {
-                "runner_id": self.runner_id,
-                "branch_name": task_context.branch_name,
-                "artifacts": [
-                    {
-                        "type": artifact.type.value,
-                        "uri": artifact.uri,
-                        "size_bytes": artifact.size_bytes,
+        # Report to Task Registry Client if configured
+        if self.task_registry_client:
+            try:
+                # Update task status to done
+                self.task_registry_client.update_task_status(
+                    task_id=task_context.task_id,
+                    status="done",
+                    metadata={
+                        "runner_id": self.runner_id,
+                        "branch_name": task_context.branch_name,
+                        "spec_name": task_context.spec_name,
                     }
-                    for artifact in artifacts
-                ],
-            }
-            
-            self.task_registry.add_event(
-                spec_name=task_context.spec_name,
-                task_id=task_context.task_id,
-                event_type=TaskEvent.TASK_COMPLETED,
-                data=event_data
-            )
-            
-            self._log("Task completion reported to Task Registry")
-            
-        except Exception as e:
-            self._log(f"Failed to report completion to Task Registry: {e}")
-            logger.warning(f"Failed to report completion: {e}")
+                )
+                
+                # Record TaskCompleted event
+                event_data = {
+                    "runner_id": self.runner_id,
+                    "branch_name": task_context.branch_name,
+                    "spec_name": task_context.spec_name,
+                    "artifacts": [
+                        {
+                            "type": artifact.type.value,
+                            "uri": artifact.uri,
+                            "size_bytes": artifact.size_bytes,
+                        }
+                        for artifact in artifacts
+                    ],
+                }
+                
+                self.task_registry_client.add_event(
+                    task_id=task_context.task_id,
+                    event_type="TaskCompleted",
+                    data=event_data
+                )
+                
+                self._log("Task completion reported to Task Registry Client")
+                
+            except Exception as e:
+                self._log(f"Failed to report completion to Task Registry Client: {e}")
+                logger.warning(f"Failed to report completion: {e}")
+        
+        # Legacy Task Registry support
+        elif self.task_registry:
+            try:
+                # Update task state to Done
+                self.task_registry.update_task_state(
+                    spec_name=task_context.spec_name,
+                    task_id=task_context.task_id,
+                    new_state=TaskState.DONE
+                )
+                
+                # Record TaskCompleted event
+                event_data = {
+                    "runner_id": self.runner_id,
+                    "branch_name": task_context.branch_name,
+                    "artifacts": [
+                        {
+                            "type": artifact.type.value,
+                            "uri": artifact.uri,
+                            "size_bytes": artifact.size_bytes,
+                        }
+                        for artifact in artifacts
+                    ],
+                }
+                
+                self.task_registry.add_event(
+                    spec_name=task_context.spec_name,
+                    task_id=task_context.task_id,
+                    event_type=TaskEvent.TASK_COMPLETED,
+                    data=event_data
+                )
+                
+                self._log("Task completion reported to Task Registry (legacy)")
+                
+            except Exception as e:
+                self._log(f"Failed to report completion to Task Registry: {e}")
+                logger.warning(f"Failed to report completion: {e}")
+        else:
+            self._log("Task Registry not available, skipping completion report")
+        
+        # Release slot from Repo Pool Manager if configured
+        if self.repo_pool_client and task_context.slot_id:
+            try:
+                self._log(f"Releasing slot: {task_context.slot_id}")
+                self.repo_pool_client.release_slot(task_context.slot_id)
+                self._log("Slot released successfully")
+            except Exception as e:
+                self._log(f"Failed to release slot: {e}")
+                logger.warning(f"Failed to release slot {task_context.slot_id}: {e}")
 
     def _handle_error(self, task_context: TaskContext, error: Exception) -> None:
         """
@@ -977,7 +1115,7 @@ class RunnerOrchestrator:
             task_context: Task context
             error: Exception that occurred
             
-        Requirements: 8.1, 8.3, 8.4, 8.5
+        Requirements: 8.1, 8.3, 8.4, 8.5, 15.5
         """
         self._log(f"Handling error: {type(error).__name__}: {error}")
         
@@ -986,6 +1124,7 @@ class RunnerOrchestrator:
             "error_type": type(error).__name__,
             "error_message": str(error),
             "runner_id": self.runner_id,
+            "spec_name": task_context.spec_name,
         }
         
         # Save error log to file if configured
@@ -995,8 +1134,36 @@ class RunnerOrchestrator:
             except Exception as e:
                 logger.error(f"Failed to save error log: {e}")
         
-        # Report to Task Registry if available
-        if self.task_registry:
+        # Report to Task Registry Client if configured
+        if self.task_registry_client:
+            try:
+                # Update task status to failed
+                self.task_registry_client.update_task_status(
+                    task_id=task_context.task_id,
+                    status="failed",
+                    metadata={
+                        "runner_id": self.runner_id,
+                        "spec_name": task_context.spec_name,
+                        "error_type": type(error).__name__,
+                        "error_message": str(error),
+                    }
+                )
+                
+                # Record TaskFailed event
+                self.task_registry_client.add_event(
+                    task_id=task_context.task_id,
+                    event_type="TaskFailed",
+                    data=error_details
+                )
+                
+                self._log("Error reported to Task Registry Client")
+                
+            except Exception as e:
+                self._log(f"Failed to report error to Task Registry Client: {e}")
+                logger.error(f"Failed to report error to Task Registry Client: {e}")
+        
+        # Legacy Task Registry support
+        elif self.task_registry:
             try:
                 # Update task state to Failed
                 self.task_registry.update_task_state(
@@ -1013,7 +1180,7 @@ class RunnerOrchestrator:
                     data=error_details
                 )
                 
-                self._log("Error reported to Task Registry")
+                self._log("Error reported to Task Registry (legacy)")
                 
             except Exception as e:
                 self._log(f"Failed to report error to Task Registry: {e}")
@@ -1070,6 +1237,7 @@ class RunnerOrchestrator:
         Cleanup resources after task execution.
         
         Performs cleanup actions including:
+        - Releasing slot from Repo Pool Manager (even on error)
         - Clearing sensitive data from memory
         - Clearing persisted state (if task completed successfully)
         - Releasing resources
@@ -1078,11 +1246,23 @@ class RunnerOrchestrator:
         Args:
             task_context: Task context
             
-        Requirements: 10.3
+        Requirements: 10.3, 15.2
         """
         self._log("Performing cleanup")
         
         try:
+            # Release slot from Repo Pool Manager if configured and not already released
+            # This ensures slot is released even if task failed
+            if self.repo_pool_client and task_context.slot_id:
+                try:
+                    self._log(f"Releasing slot in cleanup: {task_context.slot_id}")
+                    self.repo_pool_client.release_slot(task_context.slot_id)
+                    self._log("Slot released successfully in cleanup")
+                except Exception as e:
+                    # Log but don't fail cleanup if slot release fails
+                    self._log(f"Failed to release slot in cleanup: {e}")
+                    logger.warning(f"Failed to release slot {task_context.slot_id} in cleanup: {e}")
+            
             # Clear credentials from memory
             self.credential_manager.clear_credentials()
             self._log("Credentials cleared from memory")

@@ -60,6 +60,47 @@ class TestCredentialManager:
         
         assert api_key == "custom_value"
     
+    def test_get_llm_api_key_from_env(self, monkeypatch):
+        """Test loading LLM API key from environment variable."""
+        monkeypatch.setenv("LLM_API_KEY", "sk-test-llm-key-12345")
+        
+        manager = CredentialManager()
+        api_key = manager.get_llm_api_key()
+        
+        assert api_key == "sk-test-llm-key-12345"
+        assert "llm_api_key" in manager._credentials
+    
+    def test_get_llm_api_key_custom_env_var(self, monkeypatch):
+        """Test loading LLM API key with custom environment variable."""
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-key-67890")
+        
+        manager = CredentialManager()
+        api_key = manager.get_llm_api_key(env_var="OPENAI_API_KEY")
+        
+        assert api_key == "sk-openai-key-67890"
+        assert "llm_api_key" in manager._credentials
+    
+    def test_get_llm_api_key_from_secret_mount(self, tmp_path):
+        """Test loading LLM API key from secret mount."""
+        secret_file = tmp_path / "llm_api_key"
+        secret_file.write_text("sk-mounted-key-abcdef\n")
+        
+        manager = CredentialManager()
+        manager.configure_secret_mount("llm_api_key", secret_file)
+        
+        api_key = manager.get_llm_api_key()
+        assert api_key == "sk-mounted-key-abcdef"
+        assert "llm_api_key" in manager._credentials
+    
+    def test_get_llm_api_key_not_found(self, monkeypatch):
+        """Test LLM API key not found."""
+        monkeypatch.delenv("LLM_API_KEY", raising=False)
+        
+        manager = CredentialManager()
+        api_key = manager.get_llm_api_key()
+        
+        assert api_key is None
+    
     def test_configure_secret_mount(self, tmp_path):
         """Test configuring secret mount."""
         secret_file = tmp_path / "secret.txt"

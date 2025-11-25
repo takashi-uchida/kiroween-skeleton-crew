@@ -29,6 +29,7 @@ def example_credential_management():
     # Set up environment variables
     os.environ["GIT_TOKEN"] = "ghp_1234567890abcdefghijklmnopqrstuvwxyz"
     os.environ["ARTIFACT_STORE_API_KEY"] = "sk_live_test_key_12345"
+    os.environ["LLM_API_KEY"] = "sk-llm-test-key-abcdefghijklmnop"
     
     # Create credential manager
     manager = CredentialManager()
@@ -41,6 +42,10 @@ def example_credential_management():
     api_key = manager.get_api_key("artifact_store")
     print(f"✓ Artifact Store API key loaded: {api_key[:10]}...")
     
+    # Load LLM API key
+    llm_api_key = manager.get_llm_api_key()
+    print(f"✓ LLM API key loaded: {llm_api_key[:10]}...")
+    
     # Configure secret mount (simulating Kubernetes secret)
     with tempfile.TemporaryDirectory() as tmpdir:
         secret_file = Path(tmpdir) / "kiro_api_key"
@@ -52,7 +57,7 @@ def example_credential_management():
     
     # Validate required credentials
     try:
-        manager.validate_credentials({"git_token", "artifact_store_api_key"})
+        manager.validate_credentials({"git_token", "artifact_store_api_key", "llm_api_key"})
         print("✓ All required credentials validated")
     except SecurityError as e:
         print(f"✗ Credential validation failed: {e}")

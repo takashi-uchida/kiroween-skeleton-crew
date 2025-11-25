@@ -2,7 +2,13 @@
 
 ## Overview
 
-Agent Runnerは、タスクを実行するステートレスなワーカーコンポーネントです。コンテナベースで起動し、Repo Pool Managerから割り当てられたワークスペースで、fetch→rebase→branch→実装→テスト→pushの一連の処理を自動実行します。複数の実行環境（local-process/docker/k8s）をサポートし、水平スケールが可能です。
+Agent Runnerは、タスクを実行するステートレスなワーカーコンポーネントです。Dispatcherから受け取ったタスクを、Repo Pool Managerから割り当てられたワークスペースで実行します。Kiroをコード生成エンジンとして利用し、fetch→rebase→branch→実装→テスト→pushの一連の処理を自動実行します。複数の実行環境（local-process/docker/k8s）をサポートし、水平スケールが可能です。
+
+## Core Principle
+
+**Agent Runner = タスク実行オーケストレーター + Kiro（コード生成エンジン）**
+
+Agent Runnerは「エージェント」ではなく、Kiroを呼び出してコードを生成させる「オーケストレーター」です。実際のコード生成はKiroが担当します。
 
 ## Architecture
 
@@ -14,6 +20,8 @@ Agent Runnerは、タスクを実行するステートレスなワーカーコ�
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  Dispatcher ──────► Agent Runner ◄────── Task Registry     │
+│                           │                                 │
+│                           ├──────► Kiro (LLM Service)       │
 │                           │                                 │
 │                           ▼                                 │
 │                    Repo Pool Manager                        │
@@ -36,9 +44,14 @@ Agent Runnerは、タスクを実行するステートレスなワーカーコ�
 │                                                             │
 │  ┌──────────────────┐      ┌──────────────────┐           │
 │  │  RunnerOrchestrator      │  TaskExecutor    │           │
-│  │  (Main Controller)│◄────►│  (Task Impl)     │           │
+│  │  (Main Controller)│◄────►│  (Kiro Invoker)  │           │
 │  └──────────────────┘      └──────────────────┘           │
-│           │                                                 │
+│           │                         │                      │
+│           │                         ▼                      │
+│           │                ┌──────────────────┐           │
+│           │                │  LLMClient       │           │
+│           │                │  (OpenAI/etc)    │           │
+│           │                └──────────────────┘           │
 │           ▼                                                 │
 │  ┌──────────────────┐      ┌──────────────────┐           │
 │  │  WorkspaceManager│      │  TestRunner      │           │
@@ -52,6 +65,33 @@ Agent Runnerは、タスクを実行するステートレスなワーカーコ�
 │  └──────────────────┘      └──────────────────┘           │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### 外部サービスとの統合
+
+```
+┌──────────────┐
+│  Dispatcher  │ ──HTTP/gRPC──► ┌──────────────┐
+└──────────────┘                │ Agent Runner │
+                                └──────────────┘
+┌──────────────┐                       │
+│Task Registry │ ◄──REST API───────────┤
+└──────────────┘                       │
+                                       │
+┌──────────────┐                       │
+│ Repo Pool    │ ◄──REST API───────────┤
+│ Manager      │                       │
+└──────────────┘                       │
+                                       │
+┌──────────────┐                       │
+│ Artifact     │ ◄──REST API───────────┤
+│ Store        │                       │
+└──────────────┘                       │
+                                       │
+┌──────────────┐                       │
+│ LLM Service  │ ◄──OpenAI API─────────┘
+│ (OpenAI)     │
+└──────────────┘
 ```
 
 ## Components and Interfaces
@@ -73,25 +113,17 @@ class RunnerOrchestrator:
         self.runner_id = self._generate_runner_id()
         self.state = RunnerState.IDLE
         
-        # A2Aプロトコルの初期化
-        self.message_bus = MessageBus(config.message_bus_config)
-        self.agent_registry = AgentRegistry(config.registry_storage)
-        self.a2a_client = A2AClient(
-            agent_id=self.runner_id,
-            capabilities=config.capabilities,
-            message_bus=self.message_bus,
-            agent_registry=self.agent_registry
-        )
+        # 外部サービスクライアントの初期化
+        self.task_registry_client = TaskRegistryClient(config.task_registry_url)
+        self.repo_pool_client = RepoPoolClient(config.repo_pool_url)
+        self.artifact_store_client = ArtifactStoreClient(config.artifact_store_url)
         
-        # コンポーネントの初期化（A2Aクライアントを渡す）
+        # コンポーネントの初期化
         self.workspace_manager = WorkspaceManager()
-        self.task_executor = TaskExecutor(self.a2a_client)
+        self.task_executor = TaskExecutor(config.llm_config)
         self.test_runner = TestRunner()
-        self.artifact_uploader = ArtifactUploader()
+        self.artifact_uploader = ArtifactUploader(self.artifact_store_client)
         self.playbook_engine = PlaybookEngine()
-        
-        # A2Aメッセージハンドラーを登録
-        self._register_a2a_handlers()
     
     def run(self, task_context: TaskContext) -> RunnerResult:
         """タスクを実行"""
@@ -218,17 +250,18 @@ class WorkspaceManager:
 
 ### 3. TaskExecutor (Task Implementation)
 
-タスクの実装を実行します。A2Aプロトコルを使用して他のエージェントと協調します。
+タスクの実装を実行します。LLMサービス（OpenAI等）を使用してコードを生成します。
 
 ```python
 class TaskExecutor:
     """タスクの実装"""
     
-    def __init__(self, a2a_client: A2AClient):
-        self.kiro_client = KiroClient()
-        self.a2a_client = a2a_client
-        self.code_review_collab = CodeReviewCollaboration(a2a_client)
-        self.pair_programming_collab = PairProgrammingCollaboration(a2a_client)
+    def __init__(self, llm_config: LLMConfig):
+        """
+        Args:
+            llm_config: LLM設定（APIキー、モデル名等）
+        """
+        self.llm_client = LLMClient(llm_config)
     
     def execute(
         self,
@@ -237,46 +270,38 @@ class TaskExecutor:
     ) -> ImplementationResult:
         """タスクを実装"""
         try:
-            # 1. 複雑なタスクの場合はペアプログラミングを検討
-            if task_context.complexity == "high":
-                return self._execute_with_pair(task_context, workspace)
+            # 1. タスクコンテキストからプロンプトを構築
+            prompt = self._build_implementation_prompt(task_context, workspace)
             
-            # 2. タスクコンテキストをKiroに渡す
-            prompt = self._build_implementation_prompt(task_context)
+            # 2. LLMにコード生成を依頼
+            start_time = time.time()
+            llm_response = self.llm_client.generate_code(
+                prompt=prompt,
+                workspace_path=workspace.path,
+                max_tokens=task_context.max_tokens or 4000
+            )
+            duration = time.time() - start_time
             
-            # 3. Kiroに実装を依頼
-            impl_response = self.kiro_client.implement(prompt, workspace.path)
+            # 3. 生成されたコードをワークスペースに適用
+            files_changed = self._apply_code_changes(
+                workspace,
+                llm_response.code_changes
+            )
             
             # 4. 実装結果を検証
-            if not self._verify_implementation(impl_response):
+            if not self._verify_implementation(workspace, files_changed):
                 raise ImplementationError("Implementation verification failed")
             
             # 5. 変更内容をdiffとして保存
             diff = workspace.get_diff()
             
-            # 6. コードレビューを依頼
-            if task_context.require_review:
-                review_result = self.code_review_collab.request_review(
-                    task_id=task_context.task_id,
-                    diff=diff,
-                    files_changed=impl_response.files_changed,
-                    implementation_notes=impl_response.notes
-                )
-                
-                # レビューが承認されなかった場合は修正
-                if not review_result.approved:
-                    return self._fix_review_issues(
-                        task_context,
-                        workspace,
-                        review_result
-                    )
-            
             return ImplementationResult(
                 success=True,
                 diff=diff,
-                files_changed=impl_response.files_changed,
-                duration_seconds=impl_response.duration,
-                review_result=review_result if task_context.require_review else None
+                files_changed=files_changed,
+                duration_seconds=duration,
+                llm_model=llm_response.model,
+                tokens_used=llm_response.tokens_used
             )
             
         except Exception as e:
@@ -285,56 +310,108 @@ class TaskExecutor:
                 error=str(e)
             )
     
-    def _execute_with_pair(
+    def _apply_code_changes(
+        self,
+        workspace: Workspace,
+        code_changes: List[CodeChange]
+    ) -> List[str]:
+        """コード変更をワークスペースに適用"""
+        files_changed = []
+        
+        for change in code_changes:
+            file_path = workspace.path / change.file_path
+            
+            if change.operation == "create":
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(change.content)
+                files_changed.append(str(change.file_path))
+                
+            elif change.operation == "modify":
+                if not file_path.exists():
+                    raise ImplementationError(f"File not found: {change.file_path}")
+                file_path.write_text(change.content)
+                files_changed.append(str(change.file_path))
+                
+            elif change.operation == "delete":
+                if file_path.exists():
+                    file_path.unlink()
+                    files_changed.append(str(change.file_path))
+        
+        return files_changed
+    
+    def _build_implementation_prompt(
         self,
         task_context: TaskContext,
         workspace: Workspace
-    ) -> ImplementationResult:
-        """ペアプログラミングで実装"""
-        # ペアセッションを開始
-        session = self.pair_programming_collab.start_session(
-            task_id=task_context.task_id,
-            task_description=task_context.description,
-            required_capability="backend"  # タスクに応じて変更
-        )
-        
-        # 協調して実装
-        # （実装の詳細は省略）
-        
-        return ImplementationResult(
-            success=True,
-            diff=workspace.get_diff(),
-            files_changed=[],
-            duration_seconds=0,
-            pair_session_id=session.session_id
-        )
-    
-    def _fix_review_issues(
-        self,
-        task_context: TaskContext,
-        workspace: Workspace,
-        review_result: ReviewResult
-    ) -> ImplementationResult:
-        """レビュー指摘を修正"""
-        # レビューコメントに基づいて修正
-        fix_prompt = self._build_fix_prompt(review_result)
-        fix_response = self.kiro_client.implement(fix_prompt, workspace.path)
-        
-        return ImplementationResult(
-            success=True,
-            diff=workspace.get_diff(),
-            files_changed=fix_response.files_changed,
-            duration_seconds=fix_response.duration,
-            review_result=review_result
-        )
-    
-    def _build_implementation_prompt(self, task_context: TaskContext) -> str:
+    ) -> str:
         """実装プロンプトを構築"""
-        pass
+        prompt_parts = [
+            f"# Task: {task_context.title}",
+            f"\n## Description\n{task_context.description}",
+            "\n## Acceptance Criteria"
+        ]
+        
+        for i, criteria in enumerate(task_context.acceptance_criteria, 1):
+            prompt_parts.append(f"{i}. {criteria}")
+        
+        # 依存タスクの情報を追加
+        if task_context.dependencies:
+            prompt_parts.append("\n## Completed Dependencies")
+            for dep_id in task_context.dependencies:
+                prompt_parts.append(f"- Task {dep_id}")
+        
+        # 既存のファイル構造を追加
+        prompt_parts.append("\n## Current Workspace Structure")
+        prompt_parts.append(self._get_workspace_structure(workspace))
+        
+        # 関連ファイルの内容を追加
+        if task_context.related_files:
+            prompt_parts.append("\n## Related Files")
+            for file_path in task_context.related_files:
+                content = workspace.read_file(file_path)
+                prompt_parts.append(f"\n### {file_path}\n```\n{content}\n```")
+        
+        prompt_parts.append("\n## Instructions")
+        prompt_parts.append("Generate the code changes needed to implement this task.")
+        prompt_parts.append("Return the changes in the following JSON format:")
+        prompt_parts.append("""
+{
+  "code_changes": [
+    {
+      "file_path": "path/to/file.py",
+      "operation": "create|modify|delete",
+      "content": "file content here"
+    }
+  ],
+  "explanation": "Brief explanation of changes"
+}
+""")
+        
+        return "\n".join(prompt_parts)
     
-    def _verify_implementation(self, impl_response: Any) -> bool:
+    def _get_workspace_structure(self, workspace: Workspace) -> str:
+        """ワークスペースの構造を取得"""
+        # 簡易的なファイルツリーを生成
+        # 実装の詳細は省略
+        return "src/\n  main.py\n  utils.py\ntests/\n  test_main.py"
+    
+    def _verify_implementation(
+        self,
+        workspace: Workspace,
+        files_changed: List[str]
+    ) -> bool:
         """実装を検証"""
-        pass
+        # 基本的な検証
+        if not files_changed:
+            return False
+        
+        # 変更されたファイルが存在するか確認
+        for file_path in files_changed:
+            full_path = workspace.path / file_path
+            if not full_path.exists():
+                return False
+        
+        return True
 
 ### 4. TestRunner (Test Execution)
 
@@ -389,8 +466,12 @@ class TestRunner:
 class ArtifactUploader:
     """成果物のアップロード"""
     
-    def __init__(self):
-        self.artifact_store_client = ArtifactStoreClient()
+    def __init__(self, artifact_store_client: ArtifactStoreClient):
+        """
+        Args:
+            artifact_store_client: Artifact Storeクライアント
+        """
+        self.artifact_store_client = artifact_store_client
     
     def upload_artifacts(
         self,
@@ -476,7 +557,224 @@ class PlaybookEngine:
         """ステップを実行"""
         pass
 
+## External Service Clients
+
+### TaskRegistryClient
+
+```python
+class TaskRegistryClient:
+    """Task Registryとの通信クライアント"""
+    
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def update_task_status(
+        self,
+        task_id: str,
+        status: str,
+        metadata: Dict[str, Any] = None
+    ) -> None:
+        """タスクの状態を更新"""
+        response = self.session.put(
+            f"{self.base_url}/tasks/{task_id}/status",
+            json={"status": status, "metadata": metadata}
+        )
+        response.raise_for_status()
+    
+    def add_event(
+        self,
+        task_id: str,
+        event_type: str,
+        data: Dict[str, Any]
+    ) -> None:
+        """イベントを記録"""
+        response = self.session.post(
+            f"{self.base_url}/tasks/{task_id}/events",
+            json={"event_type": event_type, "data": data}
+        )
+        response.raise_for_status()
+    
+    def add_artifact(
+        self,
+        task_id: str,
+        artifact_type: str,
+        uri: str,
+        size_bytes: int
+    ) -> None:
+        """成果物を記録"""
+        response = self.session.post(
+            f"{self.base_url}/tasks/{task_id}/artifacts",
+            json={
+                "type": artifact_type,
+                "uri": uri,
+                "size_bytes": size_bytes
+            }
+        )
+        response.raise_for_status()
+```
+
+### RepoPoolClient
+
+```python
+class RepoPoolClient:
+    """Repo Pool Managerとの通信クライアント"""
+    
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def allocate_slot(
+        self,
+        repo_url: str,
+        required_by: str
+    ) -> SlotAllocation:
+        """スロットを割り当て"""
+        response = self.session.post(
+            f"{self.base_url}/slots/allocate",
+            json={"repo_url": repo_url, "required_by": required_by}
+        )
+        response.raise_for_status()
+        data = response.json()
+        return SlotAllocation(
+            slot_id=data["slot_id"],
+            slot_path=Path(data["slot_path"])
+        )
+    
+    def release_slot(self, slot_id: str) -> None:
+        """スロットを返却"""
+        response = self.session.post(
+            f"{self.base_url}/slots/{slot_id}/release"
+        )
+        response.raise_for_status()
+```
+
+### ArtifactStoreClient
+
+```python
+class ArtifactStoreClient:
+    """Artifact Storeとの通信クライアント"""
+    
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def upload(
+        self,
+        artifact_type: str,
+        content: bytes,
+        metadata: Dict[str, Any] = None
+    ) -> str:
+        """成果物をアップロード"""
+        files = {"file": content}
+        data = {"type": artifact_type, "metadata": json.dumps(metadata or {})}
+        
+        response = self.session.post(
+            f"{self.base_url}/artifacts",
+            files=files,
+            data=data
+        )
+        response.raise_for_status()
+        return response.json()["uri"]
+```
+
+### LLMClient
+
+```python
+class LLMClient:
+    """LLMサービスとの通信クライアント"""
+    
+    def __init__(self, config: LLMConfig):
+        """
+        Args:
+            config: LLM設定（APIキー、モデル名、エンドポイント等）
+        """
+        self.config = config
+        self.client = openai.OpenAI(api_key=config.api_key)
+    
+    def generate_code(
+        self,
+        prompt: str,
+        workspace_path: Path,
+        max_tokens: int = 4000
+    ) -> LLMResponse:
+        """コードを生成"""
+        response = self.client.chat.completions.create(
+            model=self.config.model,
+            messages=[
+                {"role": "system", "content": "You are a code generation assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=max_tokens,
+            temperature=0.2
+        )
+        
+        content = response.choices[0].message.content
+        
+        # JSONレスポンスをパース
+        try:
+            data = json.loads(content)
+            code_changes = [
+                CodeChange(**change) for change in data["code_changes"]
+            ]
+            explanation = data.get("explanation", "")
+        except json.JSONDecodeError:
+            raise ImplementationError("Failed to parse LLM response")
+        
+        return LLMResponse(
+            code_changes=code_changes,
+            explanation=explanation,
+            model=response.model,
+            tokens_used=response.usage.total_tokens
+        )
+```
+
 ## Data Models
+
+### SlotAllocation
+
+```python
+@dataclass
+class SlotAllocation:
+    """スロット割り当て情報"""
+    slot_id: str
+    slot_path: Path
+```
+
+### CodeChange
+
+```python
+@dataclass
+class CodeChange:
+    """コード変更"""
+    file_path: str
+    operation: str  # "create", "modify", "delete"
+    content: str = ""
+```
+
+### LLMResponse
+
+```python
+@dataclass
+class LLMResponse:
+    """LLMレスポンス"""
+    code_changes: List[CodeChange]
+    explanation: str
+    model: str
+    tokens_used: int
+```
+
+### LLMConfig
+
+```python
+@dataclass
+class LLMConfig:
+    """LLM設定"""
+    api_key: str
+    model: str = "gpt-4"
+    endpoint: Optional[str] = None
+    timeout_seconds: int = 120
+```
 
 ### TaskContext
 
@@ -548,6 +846,8 @@ class ImplementationResult:
     diff: str
     files_changed: List[str]
     duration_seconds: float
+    llm_model: Optional[str] = None
+    tokens_used: Optional[int] = None
     error: Optional[str] = None
 
 ### TestResult
@@ -816,12 +1116,74 @@ class RetryConfig:
 
 ```python
 # requirements.txt
+# Git操作
 gitpython>=3.1.0
+
+# 設定ファイル
 pyyaml>=6.0
+
+# HTTP通信
 requests>=2.31.0
+
+# LLMサービス
+openai>=1.0.0
+
+# コンテナ実行環境
 docker>=6.1.0  # Dockerモード用
 kubernetes>=27.2.0  # Kubernetesモード用
-psutil>=5.9.0  # リソース監視
+
+# リソース監視
+psutil>=5.9.0
+
+# ロギング
+structlog>=23.1.0
+```
+
+## Configuration Example
+
+```yaml
+# config.yaml
+runner:
+  runner_id: "runner-001"
+  execution_mode: "local-process"
+  
+  # タイムアウト
+  default_timeout_seconds: 1800
+  
+  # リトライ
+  git_retry_count: 3
+  network_retry_count: 3
+  
+  # リソース制限
+  max_memory_mb: 4096
+  max_cpu_percent: 80
+  
+  # ログ
+  log_level: "INFO"
+  structured_logging: true
+
+# 外部サービス
+task_registry:
+  url: "http://task-registry:8080"
+  
+repo_pool:
+  url: "http://repo-pool:8081"
+  
+artifact_store:
+  url: "http://artifact-store:8082"
+
+# LLM設定
+llm:
+  provider: "openai"
+  model: "gpt-4"
+  api_key_env: "OPENAI_API_KEY"
+  timeout_seconds: 120
+  max_tokens: 4000
+
+# セキュリティ
+security:
+  git_token_env: "GIT_TOKEN"
+  mask_secrets: true
 ```
 
 ## Future Enhancements

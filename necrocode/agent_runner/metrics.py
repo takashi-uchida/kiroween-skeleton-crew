@@ -71,6 +71,21 @@ class ExecutionMetrics:
     wait_time_seconds: float = 0.0  # Time spent waiting for resources
     resource_conflicts_detected: int = 0  # Number of resource conflicts
     
+    # LLM metrics
+    llm_calls: int = 0  # Number of LLM API calls
+    llm_total_duration_seconds: float = 0.0  # Total time spent in LLM calls
+    llm_total_tokens: int = 0  # Total tokens used
+    llm_prompt_tokens: int = 0  # Total prompt tokens
+    llm_completion_tokens: int = 0  # Total completion tokens
+    
+    # External service metrics
+    task_registry_calls: int = 0  # Number of Task Registry API calls
+    task_registry_duration_seconds: float = 0.0  # Total time in Task Registry calls
+    repo_pool_calls: int = 0  # Number of Repo Pool API calls
+    repo_pool_duration_seconds: float = 0.0  # Total time in Repo Pool calls
+    artifact_store_calls: int = 0  # Number of Artifact Store API calls
+    artifact_store_duration_seconds: float = 0.0  # Total time in Artifact Store calls
+    
     # Additional metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
     
@@ -102,6 +117,17 @@ class ExecutionMetrics:
             "concurrent_runners": self.concurrent_runners,
             "wait_time_seconds": self.wait_time_seconds,
             "resource_conflicts_detected": self.resource_conflicts_detected,
+            "llm_calls": self.llm_calls,
+            "llm_total_duration_seconds": self.llm_total_duration_seconds,
+            "llm_total_tokens": self.llm_total_tokens,
+            "llm_prompt_tokens": self.llm_prompt_tokens,
+            "llm_completion_tokens": self.llm_completion_tokens,
+            "task_registry_calls": self.task_registry_calls,
+            "task_registry_duration_seconds": self.task_registry_duration_seconds,
+            "repo_pool_calls": self.repo_pool_calls,
+            "repo_pool_duration_seconds": self.repo_pool_duration_seconds,
+            "artifact_store_calls": self.artifact_store_calls,
+            "artifact_store_duration_seconds": self.artifact_store_duration_seconds,
             "metadata": self.metadata,
         }
     
@@ -298,6 +324,50 @@ class MetricsCollector:
         """Record a resource conflict detection."""
         self.metrics.resource_conflicts_detected += 1
     
+    def record_llm_call(
+        self,
+        duration_seconds: float,
+        tokens_used: int,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0
+    ) -> None:
+        """
+        Record an LLM API call.
+        
+        Args:
+            duration_seconds: Duration of the LLM call
+            tokens_used: Total tokens used
+            prompt_tokens: Prompt tokens used
+            completion_tokens: Completion tokens used
+        """
+        self.metrics.llm_calls += 1
+        self.metrics.llm_total_duration_seconds += duration_seconds
+        self.metrics.llm_total_tokens += tokens_used
+        self.metrics.llm_prompt_tokens += prompt_tokens
+        self.metrics.llm_completion_tokens += completion_tokens
+    
+    def record_external_service_call(
+        self,
+        service: str,
+        duration_seconds: float
+    ) -> None:
+        """
+        Record an external service API call.
+        
+        Args:
+            service: Service name ("task_registry", "repo_pool", "artifact_store")
+            duration_seconds: Duration of the call
+        """
+        if service == "task_registry":
+            self.metrics.task_registry_calls += 1
+            self.metrics.task_registry_duration_seconds += duration_seconds
+        elif service == "repo_pool":
+            self.metrics.repo_pool_calls += 1
+            self.metrics.repo_pool_duration_seconds += duration_seconds
+        elif service == "artifact_store":
+            self.metrics.artifact_store_calls += 1
+            self.metrics.artifact_store_duration_seconds += duration_seconds
+    
     def finalize(self) -> ExecutionMetrics:
         """
         Finalize metrics collection.
@@ -427,6 +497,38 @@ class MetricsReporter:
                 print(f"  Wait Time: {metrics.wait_time_seconds:.2f}s")
             if metrics.resource_conflicts_detected > 0:
                 print(f"  Resource Conflicts: {metrics.resource_conflicts_detected}")
+            print()
+        
+        # LLM metrics
+        if metrics.llm_calls > 0:
+            print("LLM Service:")
+            print(f"  API Calls: {metrics.llm_calls}")
+            print(f"  Total Duration: {metrics.llm_total_duration_seconds:.2f}s")
+            print(f"  Avg Duration: {metrics.llm_total_duration_seconds / metrics.llm_calls:.2f}s")
+            print(f"  Total Tokens: {metrics.llm_total_tokens}")
+            if metrics.llm_prompt_tokens > 0:
+                print(f"  Prompt Tokens: {metrics.llm_prompt_tokens}")
+            if metrics.llm_completion_tokens > 0:
+                print(f"  Completion Tokens: {metrics.llm_completion_tokens}")
+            print()
+        
+        # External service metrics
+        total_service_calls = (
+            metrics.task_registry_calls +
+            metrics.repo_pool_calls +
+            metrics.artifact_store_calls
+        )
+        if total_service_calls > 0:
+            print("External Services:")
+            if metrics.task_registry_calls > 0:
+                print(f"  Task Registry: {metrics.task_registry_calls} calls, "
+                      f"{metrics.task_registry_duration_seconds:.2f}s")
+            if metrics.repo_pool_calls > 0:
+                print(f"  Repo Pool: {metrics.repo_pool_calls} calls, "
+                      f"{metrics.repo_pool_duration_seconds:.2f}s")
+            if metrics.artifact_store_calls > 0:
+                print(f"  Artifact Store: {metrics.artifact_store_calls} calls, "
+                      f"{metrics.artifact_store_duration_seconds:.2f}s")
             print()
         
         print("=" * 60 + "\n")

@@ -6,13 +6,19 @@ Agent Runnerは、NecroCodeシステムにおいてタスクを実行するワ�
 
 ## Glossary
 
-- **Agent Runner**: タスクを実行するワーカーコンポーネント
+- **Agent Runner**: タスクを実行するワーカーコンポーネント（オーケストレーター）
 - **Runner Instance**: Agent Runnerの1つの実行インスタンス
 - **Task Context**: タスク実行に必要な情報（タスクID、説明、受入基準など）
 - **Execution Environment**: Runnerが実行される環境（local-process/docker/k8s）
 - **Playbook**: タスク実行の手順を定義したスクリプト
 - **Artifact**: タスク実行の成果物（diff、ログ、テスト結果）
 - **Runner State**: Runnerの現在の状態（Idle/Running/Completed/Failed）
+- **LLM Client**: LLMサービス（OpenAI等）との通信クライアント
+- **Task Registry Client**: Task Registryとの通信クライアント
+- **Repo Pool Client**: Repo Pool Managerとの通信クライアント
+- **Artifact Store Client**: Artifact Storeとの通信クライアント
+- **Slot**: Repo Pool Managerが管理するワークスペースの割り当て単位
+- **Code Change**: LLMが生成したファイル変更（作成/修正/削除）
 
 ## Requirements
 
@@ -46,11 +52,13 @@ Agent Runnerは、NecroCodeシステムにおいてタスクを実行するワ�
 
 #### Acceptance Criteria
 
-1. THE Agent Runner SHALL タスクの説明と受入基準をKiroに渡して実装を依頼する
-2. THE Agent Runner SHALL Kiroが生成したコードをワークスペースに適用する
-3. THE Agent Runner SHALL 実装中のログを記録する
-4. THE Agent Runner SHALL 実装が完了したら、変更内容をdiff形式で保存する
-5. THE Agent Runner SHALL 実装エラーが発生した場合、エラー情報を記録してFailed状態に遷移する
+1. THE Agent Runner SHALL タスクの説明、受入基準、依存情報を含むプロンプトを構築する
+2. THE Agent Runner SHALL LLMサービス（OpenAI等）にコード生成を依頼する
+3. THE Agent Runner SHALL LLMが返したコード変更（作成/修正/削除）をワークスペースに適用する
+4. THE Agent Runner SHALL 実装中のログ（LLMリクエスト、レスポンス、トークン使用量）を記録する
+5. THE Agent Runner SHALL 実装が完了したら、変更内容をdiff形式で保存する
+6. THE Agent Runner SHALL 実装エラーが発生した場合、エラー情報を記録してFailed状態に遷移する
+7. THE Agent Runner SHALL LLMのレスポンスがJSON形式でない場合、パースエラーとして処理する
 
 ### Requirement 4: テストの実行
 
@@ -183,3 +191,29 @@ Agent Runnerは、NecroCodeシステムにおいてタスクを実行するワ�
 3. THE Agent Runner SHALL 並列実行時のリソース競合を検出し、適切に処理する
 4. THE Agent Runner SHALL 並列実行のメトリクス（同時実行数、待機時間）を記録する
 5. THE Agent Runner SHALL 最大並列実行数を設定可能にする
+
+### Requirement 15: 外部サービスとの統合
+
+**User Story:** Agent Runnerとして、外部サービス（Task Registry、Repo Pool Manager、Artifact Store）と連携したい
+
+#### Acceptance Criteria
+
+1. THE Agent Runner SHALL Task RegistryのREST APIを使用してタスク状態を更新する
+2. THE Agent Runner SHALL Repo Pool ManagerのREST APIを使用してスロットを割り当て・返却する
+3. THE Agent Runner SHALL Artifact StoreのREST APIを使用して成果物をアップロードする
+4. THE Agent Runner SHALL 各外部サービスとの通信エラーを検出し、適切にリトライする
+5. THE Agent Runner SHALL 外部サービスが利用不可の場合、エラーを記録してFailed状態に遷移する
+6. THE Agent Runner SHALL 外部サービスのエンドポイントURLを設定ファイルから読み込む
+
+### Requirement 16: LLMサービスとの統合
+
+**User Story:** Agent Runnerとして、LLMサービス（OpenAI等）を使用してコードを生成したい
+
+#### Acceptance Criteria
+
+1. THE Agent Runner SHALL LLMサービスのAPIキーを環境変数から取得する
+2. THE Agent Runner SHALL LLMモデル名（gpt-4、gpt-3.5-turbo等）を設定可能にする
+3. THE Agent Runner SHALL LLMリクエストのタイムアウト（デフォルト: 120秒）を設定可能にする
+4. THE Agent Runner SHALL LLMレスポンスのトークン使用量を記録する
+5. THE Agent Runner SHALL LLMサービスのレート制限エラーを検出し、指数バックオフでリトライする
+6. THE Agent Runner SHALL LLMサービスが利用不可の場合、エラーを記録してFailed状態に遷移する

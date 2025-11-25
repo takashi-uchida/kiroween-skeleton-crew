@@ -27,6 +27,7 @@ class HealthStatus:
     - Current task information
     - Uptime
     - Last check time
+    - External service connectivity
     """
     
     def __init__(self):
@@ -39,6 +40,7 @@ class HealthStatus:
         self.start_time = datetime.now()
         self.last_check_time = datetime.now()
         self.details: Dict[str, Any] = {}
+        self.external_services: Dict[str, bool] = {}
     
     def update(
         self,
@@ -69,6 +71,17 @@ class HealthStatus:
         self.last_check_time = datetime.now()
         self.details.update(details)
     
+    def update_service_status(self, service_name: str, healthy: bool) -> None:
+        """
+        Update external service status.
+        
+        Args:
+            service_name: Name of the service (e.g., "task_registry", "llm_service")
+            healthy: Whether the service is healthy
+        """
+        self.external_services[service_name] = healthy
+        self.last_check_time = datetime.now()
+    
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert to dictionary for JSON serialization.
@@ -88,6 +101,7 @@ class HealthStatus:
             } if self.current_task_id else None,
             "uptime_seconds": uptime_seconds,
             "last_check": self.last_check_time.isoformat(),
+            "external_services": self.external_services,
             "details": self.details,
         }
 
@@ -324,3 +338,74 @@ def create_health_check_server(
         host=host,
         health_status=health_status
     )
+
+
+def check_external_services(
+    task_registry_client: Optional[Any] = None,
+    repo_pool_client: Optional[Any] = None,
+    artifact_store_client: Optional[Any] = None,
+    llm_client: Optional[Any] = None
+) -> Dict[str, bool]:
+    """
+    Check connectivity to external services.
+    
+    Args:
+        task_registry_client: Task Registry client (optional)
+        repo_pool_client: Repo Pool client (optional)
+        artifact_store_client: Artifact Store client (optional)
+        llm_client: LLM client (optional)
+        
+    Returns:
+        Dictionary mapping service names to health status
+        
+    Requirements: 12.5, 15.5, 16.6
+    """
+    service_status = {}
+    
+    # Check Task Registry
+    if task_registry_client:
+        try:
+            logger.debug("Checking Task Registry connectivity")
+            healthy = task_registry_client.health_check()
+            service_status["task_registry"] = healthy
+            logger.info(f"Task Registry health check: {'healthy' if healthy else 'unhealthy'}")
+        except Exception as e:
+            logger.warning(f"Task Registry health check failed: {e}")
+            service_status["task_registry"] = False
+    
+    # Check Repo Pool Manager
+    if repo_pool_client:
+        try:
+            logger.debug("Checking Repo Pool Manager connectivity")
+            healthy = repo_pool_client.health_check()
+            service_status["repo_pool"] = healthy
+            logger.info(f"Repo Pool Manager health check: {'healthy' if healthy else 'unhealthy'}")
+        except Exception as e:
+            logger.warning(f"Repo Pool Manager health check failed: {e}")
+            service_status["repo_pool"] = False
+    
+    # Check Artifact Store
+    if artifact_store_client:
+        try:
+            logger.debug("Checking Artifact Store connectivity")
+            healthy = artifact_store_client.health_check()
+            service_status["artifact_store"] = healthy
+            logger.info(f"Artifact Store health check: {'healthy' if healthy else 'unhealthy'}")
+        except Exception as e:
+            logger.warning(f"Artifact Store health check failed: {e}")
+            service_status["artifact_store"] = False
+    
+    # Check LLM Service
+    if llm_client:
+        try:
+            logger.debug("Checking LLM service connectivity")
+            # Simple check: try to access the client's configuration
+            # A full check would require a test API call, but that may consume tokens
+            healthy = hasattr(llm_client, 'client') and llm_client.client is not None
+            service_status["llm_service"] = healthy
+            logger.info(f"LLM service health check: {'healthy' if healthy else 'unhealthy'}")
+        except Exception as e:
+            logger.warning(f"LLM service health check failed: {e}")
+            service_status["llm_service"] = False
+    
+    return service_status

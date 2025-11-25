@@ -1,0 +1,59 @@
+# Agent Runner Configuration for Docker
+# Dockerコンテナとして実行する場合の設定
+
+# 実行環境
+execution_mode: docker
+
+# Docker設定
+docker_image: necrocode/agent-runner:latest
+docker_volumes:
+  /var/necrocode/workspaces: /workspaces
+  /var/necrocode/artifacts: /artifacts
+
+# タイムアウト設定
+default_timeout_seconds: 1800
+
+# ログ設定
+log_level: INFO
+structured_logging: true
+
+# 外部サービスのURL（Dockerネットワーク内）
+task_registry_url: http://task-registry:8001
+repo_pool_url: http://repo-pool:8002
+artifact_store_url: http://artifact-store:8003
+
+# LLM設定
+llm:
+  model: gpt-4
+  timeout_seconds: 120
+  # api_key は環境変数 OPENAI_API_KEY から取得
+
+# リトライ設定
+git_retry_count: 3
+network_retry_count: 3
+llm_retry_count: 3
+
+# リソース制限（Dockerコンテナ用）
+max_memory_mb: 4096  # 4GB
+max_cpu_percent: 100
+
+# セキュリティ設定
+git_token_env_var: GIT_TOKEN
+llm_api_key_env_var: OPENAI_API_KEY
+mask_secrets: true
+
+# Docker固有の設定
+docker_network: necrocode-network
+docker_env:
+  - GIT_TOKEN
+  - OPENAI_API_KEY
+  - TASK_REGISTRY_URL
+  - REPO_POOL_URL
+  - ARTIFACT_STORE_URL
+
+# ヘルスチェック設定
+health_check:
+  enabled: true
+  interval_seconds: 30
+  timeout_seconds: 10
+  retries: 3

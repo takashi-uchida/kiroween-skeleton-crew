@@ -526,5 +526,282 @@ class TestCommitMessageGeneration:
         assert "[Task 2.3]" in message
 
 
+class TestExternalServiceIntegration:
+    """Tests for external service integration."""
+    
+    def test_init_with_external_services(self, tmp_path):
+        """Test initialization with external service clients."""
+        config = RunnerConfig(
+            task_registry_url="http://localhost:8080",
+            repo_pool_url="http://localhost:8081",
+            artifact_store_url="http://localhost:8082",
+            llm_api_key="test-key",
+            llm_model="gpt-4"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        
+        assert orchestrator.task_registry_client is not None
+        assert orchestrator.repo_pool_client is not None
+        assert orchestrator.artifact_store_client is not None
+        assert orchestrator.task_executor.llm_client is not None
+    
+    @patch('necrocode.agent_runner.runner_orchestrator.RepoPoolClient')
+    def test_prepare_workspace_with_slot_allocation(self, mock_repo_pool_client_class, tmp_path):
+        """Test workspace preparation with slot allocation."""
+        # Setup mock
+        mock_client = Mock()
+        mock_repo_pool_client_class.return_value = mock_client
+        
+        from necrocode.agent_runner.models import SlotAllocation
+        workspace_dir = tmp_path / "slot-123"
+        workspace_dir.mkdir()
+        
+        mock_client.allocate_slot.return_value = SlotAllocation(
+            slot_id="slot-123",
+            slot_path=workspace_dir
+        )
+        
+        config = RunnerConfig(
+            repo_pool_url="http://localhost:8081",
+            artifact_store_url=f"file://{tmp_path}/artifacts"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        orchestrator.repo_pool_client = mock_client
+        
+        workspace_dir_inner = workspace_dir / "workspace"
+        workspace_dir_inner.mkdir()
+        
+        task_context = TaskContext(
+            task_id="1.1",
+            spec_name="test-spec",
+            title="Test Task",
+            description="Test description",
+            acceptance_criteria=["Criterion 1"],
+            dependencies=[],
+            required_skill="backend",
+            slot_path=workspace_dir_inner,
+            slot_id="slot-123",
+            branch_name="feature/test-branch",
+        )
+        
+        # Mock workspace manager
+        with patch.object(orchestrator.workspace_manager, 'prepare_workspace') as mock_prepare:
+            mock_workspace = Mock()
+            mock_prepare.return_value = mock_workspace
+            
+            workspace = orchestrator._prepare_workspace(task_context)
+            
+            assert workspace is not None
+            mock_prepare.assert_called_once()
+    
+    @patch('necrocode.agent_runner.runner_orchestrator.RepoPoolClient')
+    def test_cleanup_releases_slot(self, mock_repo_pool_client_class, tmp_path):
+        """Test cleanup releases allocated slot."""
+        # Setup mock
+        mock_client = Mock()
+        mock_repo_pool_client_class.return_value = mock_client
+        
+        config = RunnerConfig(
+            repo_pool_url="http://localhost:8081",
+            artifact_store_url=f"file://{tmp_path}/artifacts"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        orchestrator.repo_pool_client = mock_client
+        
+        workspace_dir = tmp_path / "workspace"
+        workspace_dir.mkdir()
+        
+        task_context = TaskContext(
+            task_id="1.1",
+            spec_name="test-spec",
+            title="Test Task",
+            description="Test description",
+            acceptance_criteria=["Criterion 1"],
+            dependencies=[],
+            required_skill="backend",
+            slot_path=workspace_dir,
+            slot_id="slot-123",
+            branch_name="feature/test-branch",
+        )
+        
+        orchestrator._cleanup(task_context)
+        
+        # Verify slot was released
+        mock_client.release_slot.assert_called_once_with("slot-123")
+    
+    @patch('necrocode.agent_runner.runner_orchestrator.TaskRegistryClient')
+    def test_report_completion_updates_registry(self, mock_task_registry_client_class, tmp_path):
+        """Test completion reporting updates Task Registry."""
+        # Setup mock
+        mock_client = Mock()
+        mock_task_registry_client_class.return_value = mock_client
+        
+        config = RunnerConfig(
+            task_registry_url="http://localhost:8080",
+            artifact_store_url=f"file://{tmp_path}/artifacts"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        orchestrator.task_registry_client = mock_client
+        
+        workspace_dir = tmp_path / "workspace"
+        workspace_dir.mkdir()
+        
+        task_context = TaskContext(
+            task_id="1.1",
+            spec_name="test-spec",
+            title="Test Task",
+            description="Test description",
+            acceptance_criteria=["Criterion 1"],
+            dependencies=[],
+            required_skill="backend",
+            slot_path=workspace_dir,
+            slot_id="slot-123",
+            branch_name="feature/test-branch",
+        )
+        
+        from necrocode.agent_runner.models import Artifact, ArtifactType
+        from datetime import datetime
+        artifacts = [
+            Artifact(
+                type=ArtifactType.DIFF,
+                uri="http://artifacts/diff.txt",
+                size_bytes=1024,
+                created_at=datetime.now()
+            )
+        ]
+        
+        orchestrator._report_completion(task_context, artifacts)
+        
+        # Verify Task Registry was updated
+        mock_client.update_task_status.assert_called_once()
+        mock_client.add_event.assert_called_once()
+    
+    @patch('necrocode.agent_runner.runner_orchestrator.TaskRegistryClient')
+    def test_handle_error_records_failure(self, mock_task_registry_client_class, tmp_path):
+        """Test error handling records failure in Task Registry."""
+        # Setup mock
+        mock_client = Mock()
+        mock_task_registry_client_class.return_value = mock_client
+        
+        config = RunnerConfig(
+            task_registry_url="http://localhost:8080",
+            artifact_store_url=f"file://{tmp_path}/artifacts"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        orchestrator.task_registry_client = mock_client
+        
+        workspace_dir = tmp_path / "workspace"
+        workspace_dir.mkdir()
+        
+        task_context = TaskContext(
+            task_id="1.1",
+            spec_name="test-spec",
+            title="Test Task",
+            description="Test description",
+            acceptance_criteria=["Criterion 1"],
+            dependencies=[],
+            required_skill="backend",
+            slot_path=workspace_dir,
+            slot_id="slot-123",
+            branch_name="feature/test-branch",
+        )
+        
+        error = Exception("Test error")
+        orchestrator._handle_error(task_context, error)
+        
+        # Verify Task Registry was updated with failure
+        mock_client.update_task_status.assert_called_once()
+        call_args = mock_client.update_task_status.call_args
+        # Check keyword arguments
+        assert call_args[1]["task_id"] == "1.1"
+        assert call_args[1]["status"] == "failed"
+        
+        mock_client.add_event.assert_called_once()
+        event_call_args = mock_client.add_event.call_args
+        # Check keyword arguments
+        assert event_call_args[1]["task_id"] == "1.1"
+        assert event_call_args[1]["event_type"] == "TaskFailed"
+
+
+class TestErrorHandling:
+    """Tests for error handling scenarios."""
+    
+    @patch('necrocode.agent_runner.runner_orchestrator.RepoPoolClient')
+    def test_slot_allocation_failure(self, mock_repo_pool_client_class, tmp_path):
+        """Test handling of slot allocation failure."""
+        # Setup mock to raise error
+        mock_client = Mock()
+        mock_repo_pool_client_class.return_value = mock_client
+        mock_client.allocate_slot.side_effect = Exception("Slot allocation failed")
+        
+        config = RunnerConfig(
+            repo_pool_url="http://localhost:8081",
+            artifact_store_url=f"file://{tmp_path}/artifacts"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        orchestrator.repo_pool_client = mock_client
+        
+        workspace_dir = tmp_path / "workspace"
+        workspace_dir.mkdir()
+        
+        task_context = TaskContext(
+            task_id="1.1",
+            spec_name="test-spec",
+            title="Test Task",
+            description="Test description",
+            acceptance_criteria=["Criterion 1"],
+            dependencies=[],
+            required_skill="backend",
+            slot_path=workspace_dir,
+            slot_id="slot-123",
+            branch_name="feature/test-branch",
+        )
+        
+        # Mock workspace manager to avoid git operations
+        with patch.object(orchestrator.workspace_manager, 'prepare_workspace') as mock_prepare:
+            mock_prepare.side_effect = Exception("Slot allocation failed")
+            
+            # Should handle error gracefully
+            with pytest.raises(Exception, match="Slot allocation failed"):
+                orchestrator._prepare_workspace(task_context)
+    
+    @patch('necrocode.agent_runner.runner_orchestrator.TaskRegistryClient')
+    def test_task_registry_update_failure(self, mock_task_registry_client_class, tmp_path):
+        """Test handling of Task Registry update failure."""
+        # Setup mock to raise error
+        mock_client = Mock()
+        mock_task_registry_client_class.return_value = mock_client
+        mock_client.update_task_status.side_effect = Exception("Registry update failed")
+        
+        config = RunnerConfig(
+            task_registry_url="http://localhost:8080",
+            artifact_store_url=f"file://{tmp_path}/artifacts"
+        )
+        orchestrator = RunnerOrchestrator(config=config)
+        orchestrator.task_registry_client = mock_client
+        
+        workspace_dir = tmp_path / "workspace"
+        workspace_dir.mkdir()
+        
+        task_context = TaskContext(
+            task_id="1.1",
+            spec_name="test-spec",
+            title="Test Task",
+            description="Test description",
+            acceptance_criteria=["Criterion 1"],
+            dependencies=[],
+            required_skill="backend",
+            slot_path=workspace_dir,
+            slot_id="slot-123",
+            branch_name="feature/test-branch",
+        )
+        
+        # Should log warning but not crash
+        orchestrator._report_completion(task_context, [])
+        
+        # Verify it attempted to update
+        mock_client.update_task_status.assert_called_once()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

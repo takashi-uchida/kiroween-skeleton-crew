@@ -6,8 +6,10 @@ This module provides functionality for:
 - Memory usage monitoring
 - CPU usage monitoring
 - Resource limit enforcement
+- LLM call time monitoring
+- External service call time monitoring
 
-Requirements: 11.1, 11.2, 11.3, 11.4, 11.5
+Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 16.3
 """
 
 import logging
@@ -15,9 +17,9 @@ import os
 import signal
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 try:
     import psutil
@@ -67,6 +69,60 @@ class ResourceUsage:
             memory_percent=data["memory_percent"],
             cpu_percent=data["cpu_percent"],
             process_id=data["process_id"],
+        )
+
+
+@dataclass
+class ServiceCallMetrics:
+    """
+    Metrics for a single service call (LLM or external service).
+    
+    Attributes:
+        service_name: Name of the service (e.g., "openai", "task_registry")
+        operation: Operation performed (e.g., "generate_code", "update_task_status")
+        start_time: When the call started
+        end_time: When the call completed
+        duration_seconds: How long the call took
+        success: Whether the call succeeded
+        error: Error message if call failed
+        metadata: Additional metadata (e.g., tokens_used, response_size)
+    
+    Requirements: 16.3
+    """
+    service_name: str
+    operation: str
+    start_time: datetime
+    end_time: datetime
+    duration_seconds: float
+    success: bool
+    error: Optional[str] = None
+    metadata: Dict[str, any] = field(default_factory=dict)
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary for serialization."""
+        return {
+            "service_name": self.service_name,
+            "operation": self.operation,
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat(),
+            "duration_seconds": self.duration_seconds,
+            "success": self.success,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "ServiceCallMetrics":
+        """Create from dictionary."""
+        return cls(
+            service_name=data["service_name"],
+            operation=data["operation"],
+            start_time=datetime.fromisoformat(data["start_time"]),
+            end_time=datetime.fromisoformat(data["end_time"]),
+            duration_seconds=data["duration_seconds"],
+            success=data["success"],
+            error=data.get("error"),
+            metadata=data.get("metadata", {}),
         )
 
 
@@ -474,6 +530,266 @@ class ResourceMonitor:
         }
 
 
+class ServiceCallTracker:
+    """
+    Tracks LLM and external service call times.
+    
+    Provides functionality to:
+    - Record service call metrics
+    - Track LLM call durations
+    - Track external service call durations
+    - Generate service call statistics
+    
+    Requirements: 16.3
+    """
+    
+    def __init__(self):
+        """Initialize ServiceCallTracker."""
+        self.calls: List[ServiceCallMetrics] = []
+        self._lock = threading.Lock()
+        
+        logger.info("ServiceCallTracker initialized")
+    
+    def record_call(
+        self,
+        service_name: str,
+        operation: str,
+        duration_seconds: float,
+        success: bool,
+        error: Optional[str] = None,
+        metadata: Optional[Dict[str, any]] = None
+    ) -> None:
+        """
+        Record a service call.
+        
+        Args:
+            service_name: Name of the service
+            operation: Operation performed
+            duration_seconds: Duration of the call
+            success: Whether the call succeeded
+            error: Error message if failed
+            metadata: Additional metadata
+            
+        Requirements: 16.3
+        """
+        end_time = datetime.now()
+        start_time = datetime.fromtimestamp(end_time.timestamp() - duration_seconds)
+        
+        metrics = ServiceCallMetrics(
+            service_name=service_name,
+            operation=operation,
+            start_time=start_time,
+            end_time=end_time,
+            duration_seconds=duration_seconds,
+            success=success,
+            error=error,
+            metadata=metadata or {},
+        )
+        
+        with self._lock:
+            self.calls.append(metrics)
+        
+        logger.debug(
+            f"Recorded {service_name}.{operation}: "
+            f"{duration_seconds:.2f}s (success={success})"
+        )
+    
+    def get_calls_by_service(self, service_name: str) -> List[ServiceCallMetrics]:
+        """
+        Get all calls for a specific service.
+        
+        Args:
+            service_name: Name of the service
+            
+        Returns:
+            List of ServiceCallMetrics for the service
+        """
+        with self._lock:
+            return [call for call in self.calls if call.service_name == service_name]
+    
+    def get_llm_calls(self) -> List[ServiceCallMetrics]:
+        """
+        Get all LLM service calls.
+        
+        Returns:
+            List of LLM call metrics
+            
+        Requirements: 16.3
+        """
+        # Common LLM service names
+        llm_services = {"openai", "llm", "anthropic", "cohere"}
+        
+        with self._lock:
+            return [
+                call for call in self.calls
+                if call.service_name.lower() in llm_services
+            ]
+    
+    def get_external_service_calls(self) -> List[ServiceCallMetrics]:
+        """
+        Get all external service calls (non-LLM).
+        
+        Returns:
+            List of external service call metrics
+            
+        Requirements: 16.3
+        """
+        # Common external service names
+        external_services = {
+            "task_registry", "repo_pool", "artifact_store",
+            "github", "gitlab", "bitbucket"
+        }
+        
+        with self._lock:
+            return [
+                call for call in self.calls
+                if call.service_name.lower() in external_services
+            ]
+    
+    def get_service_statistics(self, service_name: Optional[str] = None) -> Dict[str, any]:
+        """
+        Get statistics for service calls.
+        
+        Args:
+            service_name: Optional service name to filter by
+            
+        Returns:
+            Dictionary with call statistics
+            
+        Requirements: 16.3
+        """
+        with self._lock:
+            if service_name:
+                calls = [call for call in self.calls if call.service_name == service_name]
+            else:
+                calls = self.calls.copy()
+        
+        if not calls:
+            return {
+                "total_calls": 0,
+                "successful_calls": 0,
+                "failed_calls": 0,
+                "total_duration_seconds": 0.0,
+                "average_duration_seconds": 0.0,
+                "min_duration_seconds": 0.0,
+                "max_duration_seconds": 0.0,
+            }
+        
+        successful_calls = [call for call in calls if call.success]
+        failed_calls = [call for call in calls if not call.success]
+        durations = [call.duration_seconds for call in calls]
+        
+        return {
+            "total_calls": len(calls),
+            "successful_calls": len(successful_calls),
+            "failed_calls": len(failed_calls),
+            "total_duration_seconds": sum(durations),
+            "average_duration_seconds": sum(durations) / len(durations),
+            "min_duration_seconds": min(durations),
+            "max_duration_seconds": max(durations),
+        }
+    
+    def get_llm_statistics(self) -> Dict[str, any]:
+        """
+        Get statistics for LLM calls.
+        
+        Returns:
+            Dictionary with LLM call statistics including token usage
+            
+        Requirements: 16.3
+        """
+        llm_calls = self.get_llm_calls()
+        
+        if not llm_calls:
+            return {
+                "total_calls": 0,
+                "total_duration_seconds": 0.0,
+                "average_duration_seconds": 0.0,
+                "total_tokens_used": 0,
+            }
+        
+        durations = [call.duration_seconds for call in llm_calls]
+        total_tokens = sum(
+            call.metadata.get("tokens_used", 0)
+            for call in llm_calls
+        )
+        
+        return {
+            "total_calls": len(llm_calls),
+            "total_duration_seconds": sum(durations),
+            "average_duration_seconds": sum(durations) / len(durations),
+            "min_duration_seconds": min(durations),
+            "max_duration_seconds": max(durations),
+            "total_tokens_used": total_tokens,
+        }
+    
+    def get_external_service_statistics(self) -> Dict[str, any]:
+        """
+        Get statistics for external service calls.
+        
+        Returns:
+            Dictionary with external service call statistics
+            
+        Requirements: 16.3
+        """
+        external_calls = self.get_external_service_calls()
+        
+        if not external_calls:
+            return {
+                "total_calls": 0,
+                "total_duration_seconds": 0.0,
+                "average_duration_seconds": 0.0,
+            }
+        
+        durations = [call.duration_seconds for call in external_calls]
+        
+        # Group by service
+        by_service = {}
+        for call in external_calls:
+            if call.service_name not in by_service:
+                by_service[call.service_name] = []
+            by_service[call.service_name].append(call)
+        
+        service_stats = {}
+        for service_name, calls in by_service.items():
+            service_durations = [call.duration_seconds for call in calls]
+            service_stats[service_name] = {
+                "total_calls": len(calls),
+                "total_duration_seconds": sum(service_durations),
+                "average_duration_seconds": sum(service_durations) / len(service_durations),
+            }
+        
+        return {
+            "total_calls": len(external_calls),
+            "total_duration_seconds": sum(durations),
+            "average_duration_seconds": sum(durations) / len(durations),
+            "min_duration_seconds": min(durations),
+            "max_duration_seconds": max(durations),
+            "by_service": service_stats,
+        }
+    
+    def get_all_statistics(self) -> Dict[str, any]:
+        """
+        Get comprehensive statistics for all service calls.
+        
+        Returns:
+            Dictionary with all service call statistics
+            
+        Requirements: 16.3
+        """
+        return {
+            "llm": self.get_llm_statistics(),
+            "external_services": self.get_external_service_statistics(),
+            "all_calls": self.get_service_statistics(),
+        }
+    
+    def clear(self) -> None:
+        """Clear all recorded calls."""
+        with self._lock:
+            self.calls.clear()
+        logger.debug("ServiceCallTracker cleared")
+
+
 class ExecutionMonitor:
     """
     Combined timeout and resource monitoring for task execution.
@@ -482,8 +798,9 @@ class ExecutionMonitor:
     - Timeout management
     - Resource monitoring
     - Limit enforcement
+    - Service call tracking
     
-    Requirements: 11.1, 11.2, 11.3, 11.4, 11.5
+    Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 16.3
     """
     
     def __init__(
@@ -492,6 +809,7 @@ class ExecutionMonitor:
         max_memory_mb: Optional[int] = None,
         max_cpu_percent: Optional[int] = None,
         monitoring_interval: float = 1.0,
+        track_service_calls: bool = True,
     ):
         """
         Initialize ExecutionMonitor.
@@ -501,6 +819,7 @@ class ExecutionMonitor:
             max_memory_mb: Maximum memory usage (None = no limit)
             max_cpu_percent: Maximum CPU usage (None = no limit)
             monitoring_interval: Resource monitoring interval
+            track_service_calls: Whether to track service call metrics
         """
         self.timeout_manager = TimeoutManager(timeout_seconds)
         
@@ -517,6 +836,11 @@ class ExecutionMonitor:
                 "Resource limits configured but psutil not available. "
                 "Resource monitoring disabled."
             )
+        
+        # Service call tracker
+        self.service_call_tracker: Optional[ServiceCallTracker] = None
+        if track_service_calls:
+            self.service_call_tracker = ServiceCallTracker()
     
     def start(self) -> None:
         """
@@ -537,6 +861,38 @@ class ExecutionMonitor:
         
         if self.resource_monitor:
             self.resource_monitor.stop()
+    
+    def record_service_call(
+        self,
+        service_name: str,
+        operation: str,
+        duration_seconds: float,
+        success: bool,
+        error: Optional[str] = None,
+        metadata: Optional[Dict[str, any]] = None
+    ) -> None:
+        """
+        Record a service call.
+        
+        Args:
+            service_name: Name of the service
+            operation: Operation performed
+            duration_seconds: Duration of the call
+            success: Whether the call succeeded
+            error: Error message if failed
+            metadata: Additional metadata
+            
+        Requirements: 16.3
+        """
+        if self.service_call_tracker:
+            self.service_call_tracker.record_call(
+                service_name=service_name,
+                operation=operation,
+                duration_seconds=duration_seconds,
+                success=success,
+                error=error,
+                metadata=metadata,
+            )
     
     def check(self) -> None:
         """
@@ -560,7 +916,9 @@ class ExecutionMonitor:
         Get current monitoring status.
         
         Returns:
-            Dictionary with timeout and resource usage information
+            Dictionary with timeout, resource usage, and service call information
+            
+        Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 16.3
         """
         status = {
             "elapsed_seconds": self.timeout_manager.get_elapsed_seconds(),
@@ -570,5 +928,8 @@ class ExecutionMonitor:
         
         if self.resource_monitor:
             status["resource_usage"] = self.resource_monitor.get_usage_summary()
+        
+        if self.service_call_tracker:
+            status["service_calls"] = self.service_call_tracker.get_all_statistics()
         
         return status

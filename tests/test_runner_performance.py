@@ -523,6 +523,86 @@ def test_rapid_task_execution(runner_orchestrator, temp_workspace):
 
 
 # ============================================================================
+# LLM Performance Tests
+# ============================================================================
+
+@pytest.mark.performance
+def test_llm_call_performance(runner_orchestrator, temp_workspace):
+    """Test performance impact of LLM calls."""
+    task_context = create_task_context(temp_workspace, "llm-perf")
+    
+    # Mock LLM call with timing
+    llm_call_duration = 2.0  # Simulate 2 second LLM call
+    
+    def mock_execute_with_llm(task_context, workspace):
+        # Simulate LLM call time
+        time.sleep(llm_call_duration)
+        
+        test_file = workspace.path / "test.py"
+        test_file.write_text("print('test')")
+        
+        return ImplementationResult(
+            success=True,
+            diff="+ test.py",
+            files_changed=["test.py"],
+            duration_seconds=llm_call_duration,
+            llm_model="gpt-4",
+            tokens_used=150,
+        )
+    
+    runner_orchestrator.task_executor.execute = mock_execute_with_llm
+    
+    # Measure total execution time
+    start_time = time.time()
+    result = runner_orchestrator.run(task_context)
+    total_time = time.time() - start_time
+    
+    assert result.success
+    
+    # Calculate overhead
+    llm_overhead = total_time - llm_call_duration
+    llm_percentage = (llm_call_duration / total_time) * 100
+    
+    print(f"\nLLM call performance:")
+    print(f"  Total time: {total_time:.2f}s")
+    print(f"  LLM call time: {llm_call_duration:.2f}s ({llm_percentage:.1f}%)")
+    print(f"  Overhead: {llm_overhead:.2f}s")
+    
+    # LLM call should be significant portion of total time
+    assert llm_percentage > 30.0
+
+
+@pytest.mark.performance
+def test_token_usage_tracking(runner_orchestrator, temp_workspace):
+    """Test token usage tracking performance."""
+    task_context = create_task_context(temp_workspace, "token-tracking")
+    
+    # Mock implementation with token tracking
+    def mock_execute_with_tokens(task_context, workspace):
+        test_file = workspace.path / "test.py"
+        test_file.write_text("print('test')")
+        
+        return ImplementationResult(
+            success=True,
+            diff="+ test.py",
+            files_changed=["test.py"],
+            duration_seconds=1.0,
+            llm_model="gpt-4",
+            tokens_used=250,
+        )
+    
+    runner_orchestrator.task_executor.execute = mock_execute_with_tokens
+    
+    # Execute task
+    result = runner_orchestrator.run(task_context)
+    
+    assert result.success
+    assert result.impl_result.tokens_used == 250
+    
+    print(f"\nToken usage: {result.impl_result.tokens_used} tokens")
+
+
+# ============================================================================
 # Comparison Tests
 # ============================================================================
 
@@ -636,3 +716,95 @@ def test_baseline_performance_benchmark(runner_orchestrator, temp_workspace):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-m", "performance"])
+
+
+# ============================================================================
+# External Service Performance Tests
+# ============================================================================
+
+@pytest.mark.performance
+def test_external_service_call_overhead(runner_orchestrator, temp_workspace):
+    """Test overhead of external service calls."""
+    task_context = create_task_context(temp_workspace, "service-overhead")
+    
+    # Mock implementation with service call simulation
+    def mock_execute_with_services(task_context, workspace):
+        # Simulate external service calls
+        time.sleep(0.1)  # Task Registry update
+        time.sleep(0.1)  # Repo Pool allocation
+        time.sleep(0.5)  # LLM call
+        time.sleep(0.1)  # Artifact upload
+        
+        test_file = workspace.path / "test.py"
+        test_file.write_text("print('test')")
+        
+        return ImplementationResult(
+            success=True,
+            diff="+ test.py",
+            files_changed=["test.py"],
+            duration_seconds=0.8,
+        )
+    
+    runner_orchestrator.task_executor.execute = mock_execute_with_services
+    
+    # Measure execution time
+    start_time = time.time()
+    result = runner_orchestrator.run(task_context)
+    total_time = time.time() - start_time
+    
+    assert result.success
+    
+    print(f"\nExternal service overhead:")
+    print(f"  Total time: {total_time:.2f}s")
+    print(f"  Service calls: ~0.8s")
+    print(f"  Orchestration overhead: ~{total_time - 0.8:.2f}s")
+
+
+@pytest.mark.performance
+def test_llm_vs_non_llm_performance(runner_orchestrator, temp_workspace):
+    """Compare performance with and without LLM calls."""
+    # Test without LLM (fast mock)
+    task_context_no_llm = create_task_context(temp_workspace, "no-llm")
+    mock_simple_implementation(runner_orchestrator)
+    
+    start_time = time.time()
+    result_no_llm = runner_orchestrator.run(task_context_no_llm)
+    time_no_llm = time.time() - start_time
+    
+    assert result_no_llm.success
+    
+    # Reset
+    runner_orchestrator.state = runner_orchestrator.state.__class__.IDLE
+    
+    # Test with LLM (slow mock)
+    task_context_with_llm = create_task_context(temp_workspace, "with-llm")
+    
+    def mock_execute_with_llm(task_context, workspace):
+        time.sleep(2.0)  # Simulate LLM call
+        test_file = workspace.path / "test.py"
+        test_file.write_text("print('test')")
+        
+        return ImplementationResult(
+            success=True,
+            diff="+ test.py",
+            files_changed=["test.py"],
+            duration_seconds=2.0,
+            llm_model="gpt-4",
+            tokens_used=200,
+        )
+    
+    runner_orchestrator.task_executor.execute = mock_execute_with_llm
+    
+    start_time = time.time()
+    result_with_llm = runner_orchestrator.run(task_context_with_llm)
+    time_with_llm = time.time() - start_time
+    
+    assert result_with_llm.success
+    
+    print(f"\nLLM vs Non-LLM performance:")
+    print(f"  Without LLM: {time_no_llm:.2f}s")
+    print(f"  With LLM: {time_with_llm:.2f}s")
+    print(f"  LLM overhead: {time_with_llm - time_no_llm:.2f}s")
+    
+    # LLM should add significant time
+    assert time_with_llm > time_no_llm + 1.5

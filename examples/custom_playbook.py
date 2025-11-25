@@ -3,13 +3,16 @@
 Custom Playbook Example
 
 このサンプルは、カスタムPlaybookを使用したAgent Runnerの実行方法を示します。
+外部サービス統合とLLM設定も含まれています。
 """
 
+import os
 from pathlib import Path
 from necrocode.agent_runner import (
     TaskContext,
     RunnerOrchestrator,
     RunnerConfig,
+    LLMConfig,
     PlaybookEngine,
     Playbook,
     PlaybookStep
@@ -136,14 +139,25 @@ def main():
     print(f"Playbook: {task_context.playbook_path}")
     print()
     
-    # 4. Runner設定を作成
+    # 4. LLM設定を作成
+    llm_config = LLMConfig(
+        api_key=os.getenv("OPENAI_API_KEY", "your-api-key"),
+        model="gpt-4",
+        timeout_seconds=120
+    )
+    
+    # 5. Runner設定を作成（外部サービス統合）
     config = RunnerConfig(
         execution_mode="local-process",
         default_timeout_seconds=2400,
-        log_level="INFO"
+        log_level="INFO",
+        task_registry_url=os.getenv("TASK_REGISTRY_URL", "http://localhost:8001"),
+        repo_pool_url=os.getenv("REPO_POOL_URL", "http://localhost:8002"),
+        artifact_store_url=os.getenv("ARTIFACT_STORE_URL", "http://localhost:8003"),
+        llm_config=llm_config
     )
     
-    # 5. Runnerを作成して実行
+    # 6. Runnerを作成して実行
     print("=== タスクの実行 ===")
     orchestrator = RunnerOrchestrator(config)
     

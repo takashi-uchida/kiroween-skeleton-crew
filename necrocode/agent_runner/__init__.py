@@ -19,6 +19,10 @@ from necrocode.agent_runner.models import (
     ArtifactType,
     Playbook,
     PlaybookStep,
+    SlotAllocation,
+    CodeChange,
+    LLMResponse,
+    LLMConfig,
 )
 from necrocode.agent_runner.exceptions import (
     RunnerError,
@@ -40,14 +44,13 @@ from necrocode.agent_runner.config import (
     ExecutionMode,
 )
 from necrocode.agent_runner.workspace_manager import WorkspaceManager
-from necrocode.agent_runner.task_executor import TaskExecutor, KiroClient
+from necrocode.agent_runner.task_executor import TaskExecutor
 from necrocode.agent_runner.test_runner import AgentTestRunner, CommandExecutor
-from necrocode.agent_runner.artifact_uploader import (
-    ArtifactUploader,
-    ArtifactStoreClient,
-    StorageBackend,
-    FilesystemBackend,
-)
+from necrocode.agent_runner.artifact_uploader import ArtifactUploader
+from necrocode.agent_runner.llm_client import LLMClient
+from necrocode.agent_runner.task_registry_client import TaskRegistryClient
+from necrocode.agent_runner.repo_pool_client import RepoPoolClient
+from necrocode.agent_runner.artifact_store_client import ArtifactStoreClient
 from necrocode.agent_runner.playbook_engine import (
     PlaybookEngine,
     PlaybookResult,
@@ -63,6 +66,8 @@ from necrocode.agent_runner.resource_monitor import (
     TimeoutManager,
     ResourceMonitor,
     ResourceUsage,
+    ServiceCallMetrics,
+    ServiceCallTracker,
     ExecutionMonitor,
 )
 from necrocode.agent_runner.logging_config import (
@@ -111,6 +116,10 @@ __all__ = [
     "ArtifactType",
     "Playbook",
     "PlaybookStep",
+    "SlotAllocation",
+    "CodeChange",
+    "LLMResponse",
+    "LLMConfig",
     # Exceptions
     "RunnerError",
     "TaskContextValidationError",
@@ -132,15 +141,16 @@ __all__ = [
     "WorkspaceManager",
     # Task Executor
     "TaskExecutor",
-    "KiroClient",
     # Test Runner
     "TestRunner",
     "CommandExecutor",
     # Artifact Uploader
     "ArtifactUploader",
+    # External Service Clients
+    "LLMClient",
+    "TaskRegistryClient",
+    "RepoPoolClient",
     "ArtifactStoreClient",
-    "StorageBackend",
-    "FilesystemBackend",
     # Playbook Engine
     "PlaybookEngine",
     "PlaybookResult",
@@ -155,6 +165,8 @@ __all__ = [
     "TimeoutManager",
     "ResourceMonitor",
     "ResourceUsage",
+    "ServiceCallMetrics",
+    "ServiceCallTracker",
     "ExecutionMonitor",
     # Logging and Metrics
     "setup_logging",
