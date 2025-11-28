@@ -132,9 +132,10 @@ class DispatcherCore:
         self.running = True
         self._shutdown_event.clear()
         
-        # Set up signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        # Set up signal handlers for graceful shutdown (only in main thread)
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGINT, self._signal_handler)
+            signal.signal(signal.SIGTERM, self._signal_handler)
         
         # Start main loop in a separate thread
         self._main_thread = threading.Thread(target=self._main_loop, daemon=False)

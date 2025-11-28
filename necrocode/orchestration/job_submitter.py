@@ -303,7 +303,8 @@ class JobSubmitter:
             tasks_completed = 0
             tasks_failed = 0
             
-            for task_id, task in taskset.tasks.items():
+            # taskset.tasks is a list, not a dict
+            for task in taskset.tasks:
                 tasks_info.append({
                     'id': task.id,
                     'title': task.title,
