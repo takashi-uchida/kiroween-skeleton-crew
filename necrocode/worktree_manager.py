@@ -9,7 +9,7 @@ class WorktreeManager:
     """Git worktreeの作成・削除・管理"""
     
     def __init__(self, repo_root: Path):
-        self.repo_root = Path(repo_root)
+        self.repo_root = Path(repo_root).resolve()
         self.worktree_base = self.repo_root / "worktrees"
         self.worktree_base.mkdir(exist_ok=True)
     
@@ -79,8 +79,14 @@ class WorktreeManager:
     def cleanup_all(self):
         """全てのタスクworktreeをクリーンアップ"""
         worktrees = self.list_worktrees()
+        worktree_base_resolved = self.worktree_base.resolve()
+        
         for wt in worktrees:
-            path = Path(wt['path'])
-            if path.parent == self.worktree_base:
+            path = Path(wt['path']).resolve()
+            # worktrees/配下のtask-*ディレクトリのみを削除
+            if path.parent == worktree_base_resolved and path.name.startswith('task-'):
                 task_id = path.name.replace('task-', '')
-                self.remove_worktree(task_id, force=True)
+                try:
+                    self.remove_worktree(task_id, force=True)
+                except Exception as e:
+                    print(f"Warning: Failed to remove worktree {task_id}: {e}")
