@@ -130,12 +130,27 @@ class WorktreeManager:
 
     def _detect_common_root(self) -> Path:
         """共有gitディレクトリから共通ルートを推定"""
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            cwd=self.repo_root,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        git_dir = Path(result.stdout.strip()).resolve()
-        return git_dir.parent
+        try:
+            # .gitがファイル（worktree）かディレクトリ（通常のリポジトリ）かを確認
+            git_path = self.repo_root / ".git"
+            if not git_path.exists():
+                # .gitが存在しない場合はrepo_rootを返す
+                return self.repo_root
+            
+            if git_path.is_file():
+                # worktreeの場合、共通ルートを検出
+                result = subprocess.run(
+                    ["git", "rev-parse", "--git-common-dir"],
+                    cwd=self.repo_root,
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                git_dir = Path(result.stdout.strip()).resolve()
+                return git_dir.parent
+            else:
+                # 通常のリポジトリの場合はrepo_rootを返す
+                return self.repo_root
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            # Gitコマンドが失敗した場合はrepo_rootを返す
+            return self.repo_root
