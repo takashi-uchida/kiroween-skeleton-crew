@@ -1,90 +1,106 @@
-# NecroCode Architecture
+# NecroCode v2: Kiro Parallel Execution with Git Worktree
 
-## Quick Reference
-- **Purpose**: Explain how NecroCode is assembled and how data flows through the system.
-- **Audience**: Architects, senior engineers, and spirits extending the framework.
-- **Read Next**: Product framing → `overview.md`, implementation guide → `development.md`.
+## Core Concept
+One repository, multiple worktrees (physically independent directories). Each worktree runs an independent Kiro instance in parallel, with coordination and synchronization managed by a central task registry.
 
-## System Context
-NecroCode ingests a job description, decomposes it into specs in `.kiro/specs/`, and executes those specs through cooperating spirits. The orchestration stack is split across:
-- `framework/orchestrator/` (Necromancer, issue routing, workload monitoring)
-- `framework/workspace_manager/` (workspace lifecycle + Git automation)
-- `necrocode/task_registry/` (stateful task/event persistence)
-- `framework/agents/` + `strandsagents/` (LLM-backed execution helpers)
-- Optional services (Artifact Store, Repo Pool Manager, Dispatcher, Review PR Service) defined in `.kiro/specs/*`.
+## Git Worktree Advantages
+- **Physical Isolation**: Each worktree is an independent directory.
+- **Git Integration**: Shares the same repository, but branches are independent.
+- **Parallel Safety**: No filesystem-level conflicts.
+- **Efficiency**: Shared `.git` directory, minimizing disk usage.
 
-## Technology Stack
-| Concern | Implementation |
-| --- | --- |
-| Language / Runtime | Python 3.11+, `dataclasses`, `typing`, `asyncio`-ready components |
-| Data & Persistence | JSON files for registry/event logs (`necrocode/task_registry`), file-based locks |
-| Version Control | Native git CLI via `framework/workspace_manager/git_operations.py`, GitHub for PRs |
-| AI / LLM | OpenAI GPT-5 Codex via `strandsagents.llm.OpenAIChatClient` |
-| Messaging | Spirit Protocol payloads exchanged through message bus utilities (planned in dispatcher spec) |
+## Architecture Diagram
 
-## Architectural Patterns
-- **Multi-Spirit Orchestration**: Necromancer summons multiple instances per role and balances load (see `.kiro/specs/necrocode-agent-orchestration`).
-- **Workspace Isolation**: Every spec executes inside a dedicated cloned workspace tracked by `WorkspaceManager`.
-- **Event Sourcing**: Task/Event stores append immutable logs that feed query engines (`necrocode/task_registry/event_store.py`).
-- **Pluggable Services**: Artifact Store, Repo Pool Manager, Agent Runner, and Review PR Service are standalone services that integrate via Spirit Protocol + Task Registry.
-
-## Spirit Protocol Specification
-- **Commit Format**: `spirit(<scope>): <spell description> [Task <spec-task-id>]`. Example: `spirit(frontend): craft login form [Task 2.1]`.
-- **Branch Naming**: `feature/task-{spec-id}-{task-number}-{slug}` or `{role}/spirit-{instance}/{feature}` when multiple instances operate simultaneously. Slugs are sanitized through `framework/workspace_manager/branch_strategy.py`.
-- **Message Envelope**:
-  ```json
-  {
-    "type": "issue_assignment",
-    "agent_instance": "frontend_spirit_2",
-    "issue_id": "login-ui",
-    "payload": {
-      "task": "2.1",
-      "dependencies": ["1.1"],
-      "context": "requirements + design extracts"
-    }
-  }
-  ```
-- **Metadata**: Each message or commit references `spec_id`, `task_id`, `agent_instance`, and optionally `issue_id` to enable traceability inside the Task Registry.
+```
+project/
+├── .git/                          # Shared Git repository
+├── main/                          # Main worktree
+│   ├── necrocode/                 # Orchestrator
+│   ├── .kiro/
+│   │   ├── tasks/
+│   │   │   └── chat-app/
+│   │   │       └── tasks.json     # Task definitions
+│   │   └── registry/              # Shared Task Registry
+│   │       ├── tasks.jsonl
+│   │       └── events.jsonl
+│   └── ...
+│
+├── worktree-task-1/               # Worktree dedicated to Task 1
+│   ├── .kiro/
+│   │   └── current-task.md        # Task 1 Context
+│   └── [Branch: feature/task-1-auth]
+│
+├── worktree-task-2/               # Worktree dedicated to Task 2
+│   ├── .kiro/
+│   │   └── current-task.md        # Task 2 Context
+│   └── [Branch: feature/task-2-websocket]
+│
+└── worktree-task-3/               # Worktree dedicated to Task 3
+    └── [Branch: feature/task-3-login-ui]
+```
 
 ## Core Components
-### Necromancer (`framework/orchestrator/necromancer.py`)
-Parses job descriptions, assembles spirit teams, and coordinates sprint execution. Collaborates with IssueRouter, WorkspaceManager, and TaskRegistry to keep tasks flowing.
 
-### Issue Router (`framework/orchestrator/issue_router.py`)
-Routes backlog items to the best spirit type/instance using keyword rules and workload awareness. Supports bilingual keyword dictionaries and least-busy scheduling.
+### 1. Worktree Manager (`necrocode/worktree_manager.py`)
+Manages Git worktree operations (create, remove, list).
 
-### Workspace Manager (`framework/workspace_manager/*.py`)
-Owns workspace lifecycle: cloning repos, generating branches/commits, pushing changes, and persisting workspace state (`state_tracker.py`). Enforces Spirit Protocol naming via `branch_strategy.py`.
+```python
+# ... (Class definition from user's proposal) ...
+```
 
-### Repo Pool Manager (spec in `.kiro/specs/repo-pool-manager`)
-Service responsible for keeping a pool of warm git workspaces ready for agents. It handles slot allocation, slot cleaning, LRU assignment, and stale lock cleanup.
+### 2. Parallel Orchestrator (`necrocode/parallel_orchestrator.py`)
+Orchestrates parallel task execution.
 
-### Agent Runner (`.kiro/specs/agent-runner`)
-Executes individual spec tasks by coordinating workspace operations, TestRunner, ArtifactUploader, and PlaybookEngine. The RunnerOrchestrator integrates with Task Registry + Artifact Store.
+```python
+# ... (Class definition from user's proposal) ...
+```
 
-### Artifact Store (`.kiro/specs/artifact-store`)
-Persists diffs, logs, test outputs, and binary artifacts generated by spirits. Provides retrieval APIs for Review PR Service and downstream tooling.
+### 3. Task Context Generator (`necrocode/task_context.py`)
+Generates the `current-task.md` context file for Kiro.
 
-### Task Registry (`necrocode/task_registry/*`)
-Source of truth for specs, tasks, task states, events, and artifacts. Components include `task_store.py`, `event_store.py`, `lock_manager.py`, and querying/graph visualization helpers.
+```python
+# ... (Class definition from user's proposal) ...
+```
 
-### Dispatcher & Review PR Service
-Dispatcher assigns ready tasks to runners based on skills/availability. Review PR Service consumes commits/artifacts, runs review heuristics, and reports findings back to the registry.
+### 4. Kiro Invoker (`necrocode/kiro_invoker.py`)
+Invokes the Kiro CLI (or API) within a worktree.
 
-## Data Models
-- **Taskset / Task / TaskEvent** – defined in `necrocode/task_registry/models.py`, capture spec metadata, dependency graphs, and lifecycle events.
-- **Artifact** – stored alongside tasks with `type`, `uri`, size, and timestamps (`task_registry/task_registry.py::add_artifact`).
-- **WorkspaceInfo** – persisted via `framework/workspace_manager/state_tracker.py` with workspace path, repo URL, branch, and status flags.
-- **AgentInstance & Issue** – defined in `.kiro/specs/necrocode-agent-orchestration` implementation; hold routing metadata (role, workload, assigned branches).
-- **Slot / Pool / AllocationMetrics** – planned data models for Repo Pool Manager, ensuring slots are persisted with state and health information.
+```python
+# ... (Class definition from user's proposal) ...
+```
 
-## Quality Attributes
-- **Performance**: Workspace creation dominated by git clone/pull; state and registry operations are O(1) file writes; issue routing is O(n) relative to agent instances.
-- **Security**: Secrets pulled from environment (e.g., `OPENAI_API_KEY`), no secrets persisted in logs. Workspace isolation avoids cross-contamination. Artifact URIs reference storage backends with access controls.
-- **Scalability**: Horizontal scale via multiple agent instances + Repo Pool Manager slots. Task Registry handles concurrent updates through file locks. Dispatcher/Agent Runner specs describe stateless workers.
-- **Observability**: Structured logging for routing/runner decisions, event logs in `event_store.py`, metrics hooks outlined in agent-runner spec for future Prometheus reporting.
+### 5. CLI Interface (`necrocode/cli.py`)
+Provides command-line interaction (`plan`, `execute`, `status`).
 
-## Cross-References
-- For terminology + product framing: `overview.md`
-- For directory layout, coding standards, and workflows: `development.md`
-- For service-level requirements: `.kiro/specs/*/requirements.md`
+```python
+# ... (CLI Interface definition from user's proposal) ...
+```
+
+## Workflow Example
+```bash
+# 1. Plan tasks
+necrocode plan "認証機能付きチャットアプリ"
+
+# 2. Execute in parallel (e.g., 3 Kiro instances)
+necrocode execute chat-app --workers 3
+
+# Execution in progress:
+# [Worktree 1] Task 1: Database schema implementation...
+# [Worktree 2] Task 2: JWT authentication implementation...
+# [Worktree 3] Task 4: Login UI implementation...
+# ✓ Task 1 completed → PR #101
+# [Worktree 1] Task 3: WebSocket server implementation...
+# ✓ Task 2 completed → PR #102
+# ...
+
+# 3. Check status
+necrocode status
+```
+
+## Key Advantages
+1.  **True Parallel Execution**: Multiple Kiro instances operate in physically isolated environments.
+2.  **Git Integration**: Worktrees are a native Git feature.
+3.  **No Conflicts**: Filesystem-level isolation prevents conflicts.
+4.  **Efficiency**: Shared `.git` directory, efficient disk usage.
+5.  **Simplicity**: Avoids complex inter-agent communication overhead.
+6.  **Scalability**: Configurable number of workers.

@@ -4,37 +4,21 @@
 - **Audience**: Stakeholders, onboarding developers, and spirits needing context.
 - **Read Next**: Technical design → architecture.md, implementation guide → development.md.
 ## Product Vision
-NecroCode is an AI-powered multi-spirit development framework that transforms natural language job descriptions into fully implemented applications. It summons a team of specialized AI "spirits" that collaborate autonomously to design, implement, test, and deploy software projects.
+NecroCode is an AI-powered Kiro-native parallel development framework that transforms natural language job descriptions into fully implemented applications. It orchestrates independent Kiro instances, each operating within an isolated Git worktree, to collaborate autonomously and design, implement, test, and deploy software projects.
 ## Core Concept
-Instead of manually coordinating multiple developers, NecroCode:
-1. Takes a plain English/Japanese job description
-2. Summons specialized AI spirits (spirits) for each role
-3. Automatically generates detailed specs and task breakdowns
-4. Executes tasks in parallel across multiple spirit instances
-5. Creates pull requests in your GitHub workspace
+Instead of manual coordination, NecroCode:
+1. Takes a plain English/Japanese job description.
+2. The Task Planner breaks it down into structured tasks with dependencies.
+3. The Parallel Orchestrator creates isolated Git worktrees for tasks.
+4. Each worktree runs an independent Kiro instance, executing tasks in parallel.
+5. Kiro instances implement solutions, commit changes, and the Orchestrator handles PR creation.
 ## Key Features
-### 🧙 Necromancer (Necromancer)
-- Parses job descriptions
-- Summons appropriate spirits
-- Coordinates the entire development lifecycle
-- Manages workspace isolation
 
-### 👻 Specialized Spirits
-- **Architect Spirit**: Creates specs from job descriptions
-- **Scrum Master Spirit**: Breaks down specs into tasks, assigns to spirits
-- **Developer Spirits**: Frontend, Backend, Database specialists
-- **QA Spirit**: Testing and quality assurance
-- **DevOps Spirit**: Deployment and infrastructure
 
 ### 🔄 Multi-Instance Support
-- Multiple instances of the same spirit type work in parallel
-- Automatic load balancing across instances
-- Unique branch naming per instance (e.g., `frontend/spirit-1/login-ui`)
-
-### 📡 Spirit Protocol
-- Standardized communication format between spirits
-- Commit message format: `spirit(scope): description [Task X.Y]`
-- Branch naming: `feature/task-{spec}-{task-id}-{description}`
+- Multiple independent Kiro instances run in parallel within isolated Git worktrees.
+- Automatic distribution of tasks across available Kiro instances.
+- Each worktree operates on a unique Git branch.
 
 ### 🏗️ Workspace Management
 - Clones user's GitHub workspace dynamically
@@ -42,24 +26,25 @@ Instead of manually coordinating multiple developers, NecroCode:
 - Manages branches and commits automatically
 - Prevents conflicts between concurrent specs
 ## High-Level Workflow
-NecroCode always follows the same ritualized flow. See `architecture.md` for component internals and `development.md` for implementation details.
+NecroCode now follows this workflow, leveraging Git worktrees for parallel execution. See `architecture.md` for component internals.
 ```
 User Input: "Create a real-time chat app with authentication"
      ↓
-Necromancer clones your repo → workspace-chat-app/
+necrocode plan "Create a real-time chat app with authentication"
      ↓
-Architect Spirit generates specs → .kiro/specs/chat-app/
+Task Planner generates tasks → .kiro/tasks/chat-app/tasks.json
      ↓
-Scrum Master breaks into 15 tasks
+necrocode execute chat-app --workers 3
      ↓
-Backend Spirit 1 → Task 1.1 (JWT auth)
-Backend Spirit 2 → Task 1.2 (WebSocket)
-Frontend Spirit 1 → Task 2.1 (Login UI)
-Frontend Spirit 2 → Task 2.2 (Chat UI)
+Parallel Orchestrator creates isolated Git worktrees for tasks
      ↓
-Each spirit creates branch, commits, pushes PR
+Independent Kiro instances in each worktree implement assigned tasks
      ↓
-Result: 15 PRs ready for review in your GitHub repo
+Each Kiro instance commits changes to its worktree's branch
+     ↓
+Parallel Orchestrator creates PRs for completed tasks
+     ↓
+Result: Multiple PRs ready for review in your GitHub repo, potentially in parallel.
 ```
 ## Target Users
 - Solo developers who need to scale productivity
@@ -68,11 +53,10 @@ Result: 15 PRs ready for review in your GitHub repo
 - Anyone who wants to describe what they want and get working code
 ## Differentiation
 Unlike traditional code generators:
-- **Multi-spirit collaboration**: Spirits work together like a real team
-- **Spec-driven**: Creates detailed design docs before coding
-- **Git-native**: Works directly with your workspace
-- **Parallel execution**: Multiple spirits work simultaneously
-- **Task-aware**: Understands dependencies and execution order
+- **Kiro-native parallel collaboration**: Independent Kiro instances collaborate in parallel via isolated Git worktrees.
+- **Spec-driven**: Creates detailed design docs before coding.
+- **Git-native**: Works directly with your workspace, leveraging Git worktrees.
+- **True parallel execution**: Multiple Kiro instances work simultaneously.
+- **Task-aware**: Understands dependencies and execution order.
 ## See Also
-- [architecture.md](architecture.md) — Spirit Protocol, components, data models
-- [development.md](development.md) — Directory structure, workflows, best practices
+- [architecture.md](architecture.md) — Kiro-native Parallel Architecture, components, data models
