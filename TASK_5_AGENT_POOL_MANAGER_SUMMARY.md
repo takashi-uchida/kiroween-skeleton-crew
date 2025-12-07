@@ -1,7 +1,7 @@
-# Task 5: AgentPoolManager Implementation Summary
+# タスク5: AgentPoolManager実装サマリー
 
-## Overview
-Successfully implemented the AgentPoolManager component for the Dispatcher, which manages Agent Pools, skill-based routing, load balancing, concurrency control, and resource quota management.
+## 概要
+Dispatcher用のAgentPoolManagerコンポーネントの実装に成功しました。このコンポーネントは、エージェントプール、スキルベースルーティング、負荷分散、並行実行制御、リソースクォータ管理を管理します。
 
 ## Implementation Details
 

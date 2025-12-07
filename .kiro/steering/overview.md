@@ -28,7 +28,7 @@ Instead of manual coordination, NecroCode:
 ## High-Level Workflow
 NecroCode now follows this workflow, leveraging Git worktrees for parallel execution. See `architecture.md` for component internals.
 ```
-User Input: "Create a real-time chat app with authentication"
+ユーザー入力: "認証機能付きのリアルタイムチャットアプリを作成"
      ↓
 necrocode plan "Create a real-time chat app with authentication"
      ↓
@@ -60,3 +60,4 @@ Unlike traditional code generators:
 - **Task-aware**: Understands dependencies and execution order.
 ## See Also
 - [architecture.md](architecture.md) — Kiro-native Parallel Architecture, components, data models
+

@@ -1,0 +1,609 @@
+# NecroCode ドキュメント翻訳用語集
+# Documentation Translation Glossary
+
+version: "1.0.0"
+last_updated: "2025-12-06"
+
+# 技術用語（常に日本語訳を使用）
+technical_terms:
+  - english: "Task"
+    japanese: "タスク"
+    category: "core"
+    usage: "常に「タスク」を使用"
+    examples:
+      - "Task Registry → タスクレジストリ"
+      - "task execution → タスク実行"
+    
+  - english: "Workspace"
+    japanese: "ワークスペース"
+    category: "core"
+    usage: "常に「ワークスペース」を使用"
+    examples:
+      - "workspace management → ワークスペース管理"
+    
+  - english: "Registry"
+    japanese: "レジストリ"
+    category: "core"
+    usage: "常に「レジストリ」を使用"
+    
+  - english: "Dispatcher"
+    japanese: "ディスパッチャー"
+    category: "service"
+    usage: "常に「ディスパッチャー」を使用"
+    
+  - english: "Orchestrator"
+    japanese: "オーケストレーター"
+    category: "service"
+    usage: "常に「オーケストレーター」を使用"
+    
+  - english: "Artifact"
+    japanese: "アーティファクト"
+    category: "core"
+    usage: "常に「アーティファクト」を使用"
+    
+  - english: "Pool"
+    japanese: "プール"
+    category: "core"
+    usage: "常に「プール」を使用"
+    examples:
+      - "Repo Pool → リポジトリプール"
+      - "Agent Pool → エージェントプール"
+    
+  - english: "Slot"
+    japanese: "スロット"
+    category: "core"
+    usage: "常に「スロット」を使用"
+    
+  - english: "Runner"
+    japanese: "ランナー"
+    category: "service"
+    usage: "常に「ランナー」を使用"
+    examples:
+      - "Agent Runner → エージェントランナー"
+    
+  - english: "Specification / Spec"
+    japanese: "仕様"
+    category: "core"
+    usage: "「仕様」を使用、略称は「スペック」も可"
+    
+  - english: "Repository / Repo"
+    japanese: "リポジトリ"
+    category: "core"
+    usage: "常に「リポジトリ」を使用"
+    
+  - english: "Instance"
+    japanese: "インスタンス"
+    category: "core"
+    usage: "常に「インスタンス」を使用"
+    
+  - english: "Dependency"
+    japanese: "依存関係"
+    category: "core"
+    usage: "常に「依存関係」を使用"
+    
+  - english: "Lifecycle"
+    japanese: "ライフサイクル"
+    category: "core"
+    usage: "常に「ライフサイクル」を使用"
+    
+  - english: "Monitoring"
+    japanese: "監視"
+    category: "operation"
+    usage: "「監視」または「モニタリング」"
+    
+  - english: "Metrics"
+    japanese: "メトリクス"
+    category: "operation"
+    usage: "常に「メトリクス」を使用"
+    
+  - english: "Logging"
+    japanese: "ロギング"
+    category: "operation"
+    usage: "「ロギング」または「ログ記録」"
+    
+  - english: "Worktree"
+    japanese: "ワークツリー"
+    category: "git"
+    usage: "常に「ワークツリー」を使用"
+    examples:
+      - "git worktree → git ワークツリー"
+      - "worktree-based → ワークツリーベース"
+    
+  - english: "Allocation"
+    japanese: "割り当て"
+    category: "operation"
+    usage: "「割り当て」を使用"
+    
+  - english: "Cleanup"
+    japanese: "クリーンアップ"
+    category: "operation"
+    usage: "常に「クリーンアップ」を使用"
+    
+  - english: "Retry"
+    japanese: "リトライ"
+    category: "operation"
+    usage: "常に「リトライ」を使用"
+    
+  - english: "Timeout"
+    japanese: "タイムアウト"
+    category: "operation"
+    usage: "常に「タイムアウト」を使用"
+    
+  - english: "Deadlock"
+    japanese: "デッドロック"
+    category: "operation"
+    usage: "常に「デッドロック」を使用"
+    
+  - english: "Lock"
+    japanese: "ロック"
+    category: "operation"
+    usage: "常に「ロック」を使用"
+    
+  - english: "Concurrency"
+    japanese: "並行性"
+    category: "operation"
+    usage: "「並行性」または「同時実行」"
+    
+  - english: "Parallel"
+    japanese: "並列"
+    category: "operation"
+    usage: "常に「並列」を使用"
+    
+  - english: "Synchronization"
+    japanese: "同期"
+    category: "operation"
+    usage: "常に「同期」を使用"
+    
+  - english: "Persistence"
+    japanese: "永続化"
+    category: "storage"
+    usage: "常に「永続化」を使用"
+    
+  - english: "Storage"
+    japanese: "ストレージ"
+    category: "storage"
+    usage: "常に「ストレージ」を使用"
+    
+  - english: "Backend"
+    japanese: "バックエンド"
+    category: "architecture"
+    usage: "常に「バックエンド」を使用"
+    
+  - english: "Frontend"
+    japanese: "フロントエンド"
+    category: "architecture"
+    usage: "常に「フロントエンド」を使用"
+    
+  - english: "Middleware"
+    japanese: "ミドルウェア"
+    category: "architecture"
+    usage: "常に「ミドルウェア」を使用"
+    
+  - english: "Client"
+    japanese: "クライアント"
+    category: "architecture"
+    usage: "常に「クライアント」を使用"
+    
+  - english: "Server"
+    japanese: "サーバー"
+    category: "architecture"
+    usage: "常に「サーバー」を使用"
+    
+  - english: "Service"
+    japanese: "サービス"
+    category: "architecture"
+    usage: "常に「サービス」を使用"
+    
+  - english: "Component"
+    japanese: "コンポーネント"
+    category: "architecture"
+    usage: "常に「コンポーネント」を使用"
+    
+  - english: "Module"
+    japanese: "モジュール"
+    category: "architecture"
+    usage: "常に「モジュール」を使用"
+    
+  - english: "Interface"
+    japanese: "インターフェース"
+    category: "architecture"
+    usage: "常に「インターフェース」を使用"
+    
+  - english: "Endpoint"
+    japanese: "エンドポイント"
+    category: "api"
+    usage: "常に「エンドポイント」を使用"
+    
+  - english: "Request"
+    japanese: "リクエスト"
+    category: "api"
+    usage: "常に「リクエスト」を使用"
+    
+  - english: "Response"
+    japanese: "レスポンス"
+    category: "api"
+    usage: "常に「レスポンス」を使用"
+    
+  - english: "Payload"
+    japanese: "ペイロード"
+    category: "api"
+    usage: "常に「ペイロード」を使用"
+    
+  - english: "Schema"
+    japanese: "スキーマ"
+    category: "data"
+    usage: "常に「スキーマ」を使用"
+    
+  - english: "Model"
+    japanese: "モデル"
+    category: "data"
+    usage: "常に「モデル」を使用"
+    
+  - english: "Query"
+    japanese: "クエリ"
+    category: "data"
+    usage: "常に「クエリ」を使用"
+    
+  - english: "Index"
+    japanese: "インデックス"
+    category: "data"
+    usage: "常に「インデックス」を使用"
+    
+  - english: "Cache"
+    japanese: "キャッシュ"
+    category: "performance"
+    usage: "常に「キャッシュ」を使用"
+    
+  - english: "Optimization"
+    japanese: "最適化"
+    category: "performance"
+    usage: "常に「最適化」を使用"
+    
+  - english: "Performance"
+    japanese: "パフォーマンス"
+    category: "performance"
+    usage: "常に「パフォーマンス」を使用"
+    
+  - english: "Throughput"
+    japanese: "スループット"
+    category: "performance"
+    usage: "常に「スループット」を使用"
+    
+  - english: "Latency"
+    japanese: "レイテンシ"
+    category: "performance"
+    usage: "常に「レイテンシ」を使用"
+
+# プロジェクト固有用語
+project_terms:
+  - english: "Spirit"
+    japanese: "スピリット"
+    category: "necrocode"
+    usage: "常に「スピリット」を使用、初出時は「Spirit（スピリット）」"
+    examples:
+      - "Architect Spirit → アーキテクトスピリット"
+      - "Frontend Spirit → フロントエンドスピリット"
+    
+  - english: "Necromancer"
+    japanese: "ネクロマンサー"
+    category: "necrocode"
+    usage: "常に「ネクロマンサー」を使用、初出時は「Necromancer（ネクロマンサー）」"
+    
+  - english: "Spirit Protocol"
+    japanese: "スピリットプロトコル"
+    category: "necrocode"
+    usage: "常に「スピリットプロトコル」を使用"
+    
+  - english: "Summoning"
+    japanese: "召喚"
+    category: "necrocode"
+    usage: "スピリットの起動を指す場合は「召喚」"
+    examples:
+      - "summon spirits → スピリットを召喚"
+    
+  - english: "Spell"
+    japanese: "スペル"
+    category: "necrocode"
+    usage: "コミットメッセージ内では「spell」のまま使用可"
+    examples:
+      - "spirit(scope): cast spell → spirit(scope): cast spell"
+    
+  - english: "Taskset"
+    japanese: "タスクセット"
+    category: "necrocode"
+    usage: "常に「タスクセット」を使用"
+    examples:
+      - "taskset creation → タスクセット作成"
+    
+  - english: "Job Description"
+    japanese: "ジョブ記述"
+    category: "necrocode"
+    usage: "常に「ジョブ記述」を使用"
+    
+  - english: "Playbook"
+    japanese: "プレイブック"
+    category: "necrocode"
+    usage: "常に「プレイブック」を使用"
+    
+  - english: "Scrum Master"
+    japanese: "スクラムマスター"
+    category: "necrocode"
+    usage: "スピリットの役割として使用"
+    
+  - english: "Architect"
+    japanese: "アーキテクト"
+    category: "necrocode"
+    usage: "スピリットの役割として使用"
+    
+  - english: "Issue Router"
+    japanese: "イシュールーター"
+    category: "necrocode"
+    usage: "常に「イシュールーター」を使用"
+    
+  - english: "Workload Monitor"
+    japanese: "ワークロードモニター"
+    category: "necrocode"
+    usage: "常に「ワークロードモニター」を使用"
+
+# そのまま英語を使用する用語
+keep_english:
+  - term: "API"
+    reason: "一般的な略語"
+    
+  - term: "CLI"
+    reason: "一般的な略語"
+    
+  - term: "JSON"
+    reason: "データフォーマット名"
+    
+  - term: "YAML"
+    reason: "データフォーマット名"
+    
+  - term: "Git"
+    reason: "固有名詞"
+    
+  - term: "GitHub"
+    reason: "固有名詞"
+    
+  - term: "GitLab"
+    reason: "固有名詞"
+    
+  - term: "Bitbucket"
+    reason: "固有名詞"
+    
+  - term: "Docker"
+    reason: "固有名詞"
+    
+  - term: "Kubernetes"
+    reason: "固有名詞"
+    
+  - term: "Pull Request / PR"
+    reason: "Git用語として定着"
+    usage: "「プルリクエスト」または「PR」"
+    
+  - term: "Commit"
+    reason: "Git用語として定着"
+    usage: "「コミット」"
+    
+  - term: "Branch"
+    reason: "Git用語として定着"
+    usage: "「ブランチ」"
+    
+  - term: "Merge"
+    reason: "Git用語として定着"
+    usage: "「マージ」"
+    
+  - term: "Push"
+    reason: "Git用語として定着"
+    usage: "「プッシュ」"
+    
+  - term: "Clone"
+    reason: "Git用語として定着"
+    usage: "「クローン」"
+    
+  - term: "LLM"
+    reason: "技術用語の略語"
+    
+  - term: "OpenAI"
+    reason: "固有名詞"
+    
+  - term: "GPT"
+    reason: "固有名詞"
+    
+  - term: "Webhook"
+    reason: "技術用語として定着"
+    usage: "「Webhook」または「ウェブフック」"
+
+# 英語併記が推奨される用語
+with_english:
+  - english: "Hook"
+    japanese: "フック"
+    format: "Hook（フック）"
+    usage: "初出時は英語併記、以降は「フック」のみ"
+    
+  - english: "Agent"
+    japanese: "エージェント"
+    format: "Agent（エージェント）"
+    usage: "初出時は英語併記、以降は「エージェント」のみ"
+    
+  - english: "Event"
+    japanese: "イベント"
+    format: "Event（イベント）"
+    usage: "初出時は英語併記、以降は「イベント」のみ"
+    
+  - english: "Queue"
+    japanese: "キュー"
+    format: "Queue（キュー）"
+    usage: "初出時は英語併記、以降は「キュー」のみ"
+
+# 状態・ステータス用語
+state_terms:
+  - english: "Ready"
+    japanese: "準備完了"
+    context: "タスク状態"
+    
+  - english: "Running"
+    japanese: "実行中"
+    context: "タスク状態"
+    
+  - english: "Blocked"
+    japanese: "ブロック中"
+    context: "タスク状態"
+    
+  - english: "Done"
+    japanese: "完了"
+    context: "タスク状態"
+    
+  - english: "Failed"
+    japanese: "失敗"
+    context: "タスク状態"
+    
+  - english: "Pending"
+    japanese: "保留中"
+    context: "タスク状態"
+    
+  - english: "In Progress"
+    japanese: "進行中"
+    context: "一般的な状態"
+    
+  - english: "Completed"
+    japanese: "完了"
+    context: "一般的な状態"
+
+# 動詞の翻訳
+verbs:
+  - english: "create"
+    japanese: "作成する"
+    
+  - english: "update"
+    japanese: "更新する"
+    
+  - english: "delete"
+    japanese: "削除する"
+    
+  - english: "execute"
+    japanese: "実行する"
+    
+  - english: "implement"
+    japanese: "実装する"
+    
+  - english: "deploy"
+    japanese: "デプロイする"
+    
+  - english: "monitor"
+    japanese: "監視する"
+    
+  - english: "validate"
+    japanese: "検証する"
+    
+  - english: "configure"
+    japanese: "設定する"
+    
+  - english: "initialize"
+    japanese: "初期化する"
+    
+  - english: "allocate"
+    japanese: "割り当てる"
+    
+  - english: "release"
+    japanese: "解放する"
+    
+  - english: "schedule"
+    japanese: "スケジュールする"
+    
+  - english: "dispatch"
+    japanese: "ディスパッチする"
+
+# 文書タイプ別の表現
+document_types:
+  readme:
+    tone: "敬体（です・ます調）"
+    style: "親しみやすく、わかりやすい"
+    
+  specification:
+    tone: "常体（だ・である調）"
+    style: "正確で、技術的に詳細"
+    
+  guide:
+    tone: "敬体（です・ます調）"
+    style: "手順を明確に、実用的"
+    
+  reference:
+    tone: "常体（だ・である調）"
+    style: "簡潔で、網羅的"
+
+# よく使われるフレーズ
+common_phrases:
+  - english: "Quick Start"
+    japanese: "クイックスタート"
+    
+  - english: "Getting Started"
+    japanese: "はじめに"
+    
+  - english: "Installation"
+    japanese: "インストール"
+    
+  - english: "Configuration"
+    japanese: "設定"
+    
+  - english: "Usage"
+    japanese: "使用方法"
+    
+  - english: "Examples"
+    japanese: "使用例"
+    
+  - english: "API Reference"
+    japanese: "APIリファレンス"
+    
+  - english: "Troubleshooting"
+    japanese: "トラブルシューティング"
+    
+  - english: "Best Practices"
+    japanese: "ベストプラクティス"
+    
+  - english: "Architecture"
+    japanese: "アーキテクチャ"
+    
+  - english: "Design"
+    japanese: "設計"
+    
+  - english: "Requirements"
+    japanese: "要件"
+    
+  - english: "Overview"
+    japanese: "概要"
+    
+  - english: "Table of Contents"
+    japanese: "目次"
+    
+  - english: "See Also"
+    japanese: "関連ドキュメント"
+    
+  - english: "Note"
+    japanese: "注意"
+    
+  - english: "Warning"
+    japanese: "警告"
+    
+  - english: "Tip"
+    japanese: "ヒント"
+
+# 翻訳時の注意事項
+translation_notes:
+  - note: "コードブロック内の変数名・関数名は英語のまま"
+    example: "def create_task() → def create_task()（変更しない）"
+    
+  - note: "コードコメントは日本語化"
+    example: "# Create task → # タスクを作成"
+    
+  - note: "コマンド例の説明は日本語化"
+    example: "# Install dependencies → # 依存関係をインストール"
+    
+  - note: "ファイル名・パスは変更しない"
+    example: "README.md → README.md（変更しない）"
+    
+  - note: "環境変数名は変更しない"
+    example: "GITHUB_TOKEN → GITHUB_TOKEN（変更しない）"
+    
+  - note: "技術用語は統一された訳語を使用"
+    example: "Task → 常に「タスク」（「課題」「作業」などは使わない）"

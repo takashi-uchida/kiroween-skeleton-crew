@@ -1,10 +1,10 @@
-# Repo Pool Manager Configuration Guide
+# Repo Pool Manager設定ガイド
 
-## Quick Start
+## クイックスタート
 
-### 1. Create Configuration File
+### 1. 設定ファイルの作成
 
-Create `~/.necrocode/config/pools.yaml`:
+`~/.necrocode/config/pools.yaml`を作成：
 
 ```yaml
 defaults:
@@ -23,60 +23,60 @@ pools:
       warmup_enabled: false
 ```
 
-### 2. Initialize PoolManager
+### 2. PoolManagerの初期化
 
 ```python
 from necrocode.repo_pool import PoolManager
 
-# Load config and auto-initialize pools
+# 設定を読み込んでプールを自動初期化
 manager = PoolManager.from_config_file(auto_init_pools=True)
 ```
 
-### 3. Use Pools
+### 3. プールの使用
 
 ```python
-# Allocate a slot
+# スロットを割り当て
 slot = manager.allocate_slot("my-project")
 
-# Use the slot...
+# スロットを使用...
 
-# Release when done
+# 完了したら解放
 manager.release_slot(slot.slot_id)
 ```
 
-## Configuration Reference
+## 設定リファレンス
 
-### Defaults Section
+### Defaultsセクション
 
-Global settings applied to all pools:
+すべてのプールに適用されるグローバル設定：
 
 ```yaml
 defaults:
-  num_slots: 2              # Default number of slots per pool
-  lock_timeout: 30.0        # Lock acquisition timeout (seconds)
-  cleanup_timeout: 60.0     # Cleanup operation timeout (seconds)
-  stale_lock_hours: 24      # Hours before lock is considered stale
-  enable_metrics: true      # Enable metrics collection
+  num_slots: 2              # プールごとのデフォルトスロット数
+  lock_timeout: 30.0        # ロック取得タイムアウト（秒）
+  cleanup_timeout: 60.0     # クリーンアップ操作タイムアウト（秒）
+  stale_lock_hours: 24      # ロックが古いと見なされるまでの時間
+  enable_metrics: true      # メトリクス収集を有効化
 ```
 
-### Pools Section
+### Poolsセクション
 
-Individual pool configurations:
+個別のプール設定：
 
 ```yaml
 pools:
   pool-name:
-    repo_url: https://github.com/user/repo.git  # Required
-    num_slots: 3                                 # Optional (uses default)
-    cleanup_options:                             # Optional
-      fetch_on_allocate: true                    # Fetch before allocation
-      clean_on_release: true                     # Clean after release
-      warmup_enabled: false                      # Enable slot warmup
+    repo_url: https://github.com/user/repo.git  # 必須
+    num_slots: 3                                 # オプション（デフォルトを使用）
+    cleanup_options:                             # オプション
+      fetch_on_allocate: true                    # 割り当て前にフェッチ
+      clean_on_release: true                     # 解放後にクリーン
+      warmup_enabled: false                      # スロットのウォームアップを有効化
 ```
 
-## Common Patterns
+## 一般的なパターン
 
-### Development Environment
+### 開発環境
 
 ```yaml
 defaults:
@@ -88,12 +88,12 @@ pools:
     repo_url: https://github.com/user/dev-project.git
     num_slots: 1
     cleanup_options:
-      fetch_on_allocate: false  # Skip fetch for speed
+      fetch_on_allocate: false  # 速度のためフェッチをスキップ
       clean_on_release: false
       warmup_enabled: false
 ```
 
-### Production Environment
+### 本番環境
 
 ```yaml
 defaults:
@@ -107,18 +107,18 @@ pools:
     repo_url: https://github.com/user/prod-project.git
     num_slots: 10
     cleanup_options:
-      fetch_on_allocate: true   # Always fetch latest
-      clean_on_release: true    # Always clean
-      warmup_enabled: true      # Pre-warm slots
+      fetch_on_allocate: true   # 常に最新をフェッチ
+      clean_on_release: true    # 常にクリーン
+      warmup_enabled: true      # スロットを事前ウォームアップ
 ```
 
-### CI/CD Environment
+### CI/CD環境
 
 ```yaml
 defaults:
   num_slots: 3
   lock_timeout: 30.0
-  stale_lock_hours: 1  # Aggressive cleanup
+  stale_lock_hours: 1  # 積極的なクリーンアップ
 
 pools:
   ci-project:
@@ -130,43 +130,43 @@ pools:
       warmup_enabled: false
 ```
 
-## Dynamic Configuration
+## 動的設定
 
-### Reload Configuration
+### 設定の再読み込み
 
 ```python
-# Reload from file
+# ファイルから再読み込み
 manager.reload_config()
 
-# Reload from custom file
+# カスタムファイルから再読み込み
 manager.reload_config(Path("custom/pools.yaml"))
 ```
 
-### Watch for Changes
+### 変更の監視
 
 ```python
 from necrocode.repo_pool.config import ConfigWatcher
 import time
 
-# Create watcher
+# ウォッチャーを作成
 def on_change(new_config):
-    print("Configuration changed!")
+    print("設定が変更されました！")
     manager.reload_config()
 
 watcher = ConfigWatcher(manager.config, on_change=on_change)
 
-# Check periodically
+# 定期的にチェック
 while True:
     watcher.check_and_reload()
     time.sleep(60)
 ```
 
-### Programmatic Updates
+### プログラムによる更新
 
 ```python
 from necrocode.repo_pool.config import PoolDefinition, CleanupOptions
 
-# Add new pool
+# 新しいプールを追加
 pool_def = PoolDefinition(
     repo_name="new-project",
     repo_url="https://github.com/user/new-project.git",
@@ -179,18 +179,18 @@ pool_def = PoolDefinition(
 )
 manager.config.add_pool_definition(pool_def)
 
-# Save to file
+# ファイルに保存
 manager.config.save_to_file()
 
-# Initialize the new pool
+# 新しいプールを初期化
 manager.initialize_pools_from_config()
 ```
 
-## Validation
+## 検証
 
-### Automatic Validation
+### 自動検証
 
-Configuration is automatically validated when loaded:
+設定は読み込み時に自動的に検証されます：
 
 ```python
 from necrocode.repo_pool.config import ConfigValidationError
@@ -199,74 +199,74 @@ try:
     config = PoolConfig.load_from_file()
     config.validate()
 except ConfigValidationError as e:
-    print(f"Invalid configuration: {e}")
+    print(f"無効な設定: {e}")
 ```
 
-### Validation Rules
+### 検証ルール
 
-- `num_slots` must be >= 1
-- `lock_timeout` must be > 0
-- `cleanup_timeout` must be > 0
-- `stale_lock_hours` must be >= 0
-- `repo_url` is required for each pool
+- `num_slots`は1以上である必要があります
+- `lock_timeout`は0より大きい必要があります
+- `cleanup_timeout`は0より大きい必要があります
+- `stale_lock_hours`は0以上である必要があります
+- 各プールには`repo_url`が必要です
 
-## Troubleshooting
+## トラブルシューティング
 
-### Configuration Not Loading
+### 設定が読み込まれない
 
 ```python
-# Check if file exists
+# ファイルが存在するか確認
 config_file = Path.home() / ".necrocode" / "config" / "pools.yaml"
 if not config_file.exists():
-    print(f"Configuration file not found: {config_file}")
+    print(f"設定ファイルが見つかりません: {config_file}")
 ```
 
-### Invalid YAML Syntax
+### 無効なYAML構文
 
 ```python
 try:
     config = PoolConfig.load_from_file()
 except ConfigValidationError as e:
-    print(f"YAML parsing error: {e}")
+    print(f"YAML解析エラー: {e}")
 ```
 
-### Pool Not Initializing
+### プールが初期化されない
 
 ```python
-# Check pool definition
+# プール定義を確認
 pool_def = manager.config.get_pool_definition("my-project")
 if pool_def is None:
-    print("Pool not defined in configuration")
+    print("プールが設定で定義されていません")
 else:
-    print(f"Pool URL: {pool_def.repo_url}")
-    print(f"Slots: {pool_def.num_slots}")
+    print(f"プールURL: {pool_def.repo_url}")
+    print(f"スロット数: {pool_def.num_slots}")
 ```
 
-### Configuration Changes Not Applied
+### 設定変更が適用されない
 
 ```python
-# Check file modification time
+# ファイルの変更時刻を確認
 mtime = manager.config.get_file_mtime()
-print(f"Config file last modified: {mtime}")
+print(f"設定ファイルの最終更新: {mtime}")
 
-# Force reload
+# 強制再読み込み
 manager.reload_config()
 ```
 
-## Best Practices
+## ベストプラクティス
 
-### 1. Use Version Control
+### 1. バージョン管理を使用
 
-Store your configuration in version control:
+設定をバージョン管理に保存：
 
 ```bash
 git add ~/.necrocode/config/pools.yaml
-git commit -m "Update pool configuration"
+git commit -m "プール設定を更新"
 ```
 
-### 2. Environment-Specific Configs
+### 2. 環境固有の設定
 
-Use different configs for different environments:
+異なる環境に異なる設定を使用：
 
 ```python
 import os
@@ -276,25 +276,25 @@ config_file = Path(f"config/pools.{env}.yaml")
 manager = PoolManager.from_config_file(config_file)
 ```
 
-### 3. Validate Before Deployment
+### 3. デプロイ前の検証
 
 ```python
-# Validate configuration before deploying
+# デプロイ前に設定を検証
 config = PoolConfig.load_from_file()
 try:
     config.validate()
-    print("✓ Configuration is valid")
+    print("✓ 設定は有効です")
 except ConfigValidationError as e:
-    print(f"✗ Configuration error: {e}")
+    print(f"✗ 設定エラー: {e}")
     exit(1)
 ```
 
-### 4. Monitor Configuration Changes
+### 4. 設定変更の監視
 
 ```python
-# Log configuration changes
+# 設定変更をログに記録
 def on_config_change(new_config):
-    logger.info(f"Configuration reloaded: {len(new_config.pools)} pools")
+    logger.info(f"設定が再読み込みされました: {len(new_config.pools)}個のプール")
     for repo_name in new_config.pools:
         logger.info(f"  - {repo_name}")
     manager.reload_config()
@@ -302,27 +302,27 @@ def on_config_change(new_config):
 watcher = ConfigWatcher(manager.config, on_change=on_config_change)
 ```
 
-### 5. Backup Configuration
+### 5. 設定のバックアップ
 
 ```python
 from datetime import datetime
 
-# Backup before changes
+# 変更前にバックアップ
 backup_file = Path(f"config/pools.backup.{datetime.now().isoformat()}.yaml")
 manager.config.save_to_file(backup_file)
 ```
 
-## Examples
+## 使用例
 
-See `examples/config_management_example.py` for complete examples of:
-- Loading configuration
-- Validation
-- Dynamic reload
-- Configuration watcher
-- Saving configuration
+`examples/config_management_example.py`で以下の完全な例を参照してください：
+- 設定の読み込み
+- 検証
+- 動的再読み込み
+- 設定ウォッチャー
+- 設定の保存
 
-## See Also
+## 関連ドキュメント
 
-- [README.md](README.md) - Main documentation
-- [Design Document](../../.kiro/specs/repo-pool-manager/design.md)
-- [Requirements](../../.kiro/specs/repo-pool-manager/requirements.md)
+- [README.md](README.md) - メインドキュメント
+- [設計ドキュメント](../../.kiro/specs/repo-pool-manager/design.md)
+- [要件](../../.kiro/specs/repo-pool-manager/requirements.md)

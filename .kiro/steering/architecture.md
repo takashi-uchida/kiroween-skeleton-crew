@@ -104,3 +104,4 @@ necrocode status
 4.  **Efficiency**: Shared `.git` directory, efficient disk usage.
 5.  **Simplicity**: Avoids complex inter-agent communication overhead.
 6.  **Scalability**: Configurable number of workers.
+

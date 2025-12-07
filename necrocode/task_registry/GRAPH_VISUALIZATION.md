@@ -1,68 +1,68 @@
-# Task Registry - Graph Visualization
+# タスクレジストリ - グラフ可視化
 
-## Overview
+## 概要
 
-The Task Registry includes powerful graph visualization capabilities that allow you to visualize task dependencies in both DOT (Graphviz) and Mermaid formats. This helps you understand the structure of your task dependencies and plan execution order.
+タスクレジストリには、タスクの依存関係をDOT（Graphviz）形式とMermaid形式の両方で可視化できる強力なグラフ可視化機能が含まれています。これにより、タスクの依存関係の構造を理解し、実行順序を計画できます。
 
-## Features
+## 機能
 
-- **DOT Format Export**: Generate Graphviz DOT files for high-quality graph rendering
-- **Mermaid Format Export**: Generate Mermaid diagrams for easy web-based visualization
-- **State-based Coloring**: Tasks are colored based on their current state (Ready, Running, Blocked, Done, Failed)
-- **Optional Task Indication**: Optional tasks are visually distinguished with dashed borders
-- **Execution Order Calculation**: Topological sort to determine optimal task execution order
+- **DOT形式エクスポート**: 高品質なグラフレンダリング用のGraphviz DOTファイルを生成
+- **Mermaid形式エクスポート**: Webベースの可視化が容易なMermaidダイアグラムを生成
+- **状態ベースの色分け**: タスクは現在の状態（準備完了、実行中、ブロック中、完了、失敗）に基づいて色分けされます
+- **オプションタスクの表示**: オプションタスクは破線の枠で視覚的に区別されます
+- **実行順序の計算**: トポロジカルソートによる最適なタスク実行順序の決定
 
-## Usage
+## 使用方法
 
-### Basic Example
+### 基本的な使用例
 
 ```python
 from necrocode.task_registry import TaskRegistry
 
-# Initialize registry
+# レジストリを初期化
 registry = TaskRegistry()
 
-# Create or load a taskset
+# タスクセットを作成または読み込み
 spec_name = "my-project"
 
-# Export to DOT format
+# DOT形式にエクスポート
 dot_graph = registry.export_dependency_graph_dot(spec_name)
 print(dot_graph)
 
-# Export to Mermaid format
+# Mermaid形式にエクスポート
 mermaid_graph = registry.export_dependency_graph_mermaid(spec_name)
 print(mermaid_graph)
 
-# Get execution order
+# 実行順序を取得
 execution_order = registry.get_execution_order(spec_name)
 for level, task_ids in enumerate(execution_order, 1):
-    print(f"Level {level}: {', '.join(task_ids)}")
+    print(f"レベル {level}: {', '.join(task_ids)}")
 ```
 
-### Saving to Files
+### ファイルへの保存
 
 ```python
 from pathlib import Path
 
-# Save DOT format
+# DOT形式で保存
 dot_file = Path("output/dependencies.dot")
 dot_file.parent.mkdir(exist_ok=True)
 with open(dot_file, "w") as f:
     f.write(registry.export_dependency_graph_dot(spec_name))
 
-# Save Mermaid format
+# Mermaid形式で保存
 mermaid_file = Path("output/dependencies.mmd")
 with open(mermaid_file, "w") as f:
     f.write(registry.export_dependency_graph_mermaid(spec_name))
 ```
 
-## Visualization Methods
+## 可視化方法
 
-### 1. DOT Format (Graphviz)
+### 1. DOT形式（Graphviz）
 
-The DOT format is ideal for generating high-quality static images.
+DOT形式は高品質な静的画像の生成に最適です。
 
-**Installation:**
+**インストール:**
 ```bash
 # macOS
 brew install graphviz
@@ -71,62 +71,62 @@ brew install graphviz
 sudo apt-get install graphviz
 
 # Windows
-# Download from https://graphviz.org/download/
+# https://graphviz.org/download/ からダウンロード
 ```
 
-**Generate Images:**
+**画像を生成:**
 ```bash
-# PNG format
+# PNG形式
 dot -Tpng dependencies.dot -o dependencies.png
 
-# SVG format (scalable)
+# SVG形式（スケーラブル）
 dot -Tsvg dependencies.dot -o dependencies.svg
 
-# PDF format
+# PDF形式
 dot -Tpdf dependencies.dot -o dependencies.pdf
 ```
 
-**DOT Output Features:**
-- Nodes are colored based on task state:
-  - **Light Green**: Ready (can be executed)
-  - **Gold**: Running (currently executing)
-  - **Light Gray**: Blocked (waiting for dependencies)
-  - **Light Blue**: Done (completed)
-  - **Light Coral**: Failed
-- Optional tasks have dashed borders
-- Arrows show dependency relationships (A → B means B depends on A)
+**DOT出力の特徴:**
+- ノードはタスクの状態に基づいて色分けされます：
+  - **ライトグリーン**: 準備完了（実行可能）
+  - **ゴールド**: 実行中（現在実行中）
+  - **ライトグレー**: ブロック中（依存関係を待機中）
+  - **ライトブルー**: 完了（完了済み）
+  - **ライトコーラル**: 失敗
+- オプションタスクは破線の枠で表示されます
+- 矢印は依存関係を示します（A → B は B が A に依存することを意味します）
 
-### 2. Mermaid Format
+### 2. Mermaid形式
 
-Mermaid is perfect for documentation and web-based visualization.
+MermaidはドキュメントやWebベースの可視化に最適です。
 
-**Online Visualization:**
-1. Copy the Mermaid output
-2. Go to https://mermaid.live/
-3. Paste the content
-4. View and export the diagram
+**オンライン可視化:**
+1. Mermaid出力をコピー
+2. https://mermaid.live/ にアクセス
+3. コンテンツを貼り付け
+4. ダイアグラムを表示してエクスポート
 
-**CLI Tool:**
+**CLIツール:**
 ```bash
-# Install Mermaid CLI
+# Mermaid CLIをインストール
 npm install -g @mermaid-js/mermaid-cli
 
-# Generate PNG
+# PNGを生成
 mmdc -i dependencies.mmd -o dependencies.png
 
-# Generate SVG
+# SVGを生成
 mmdc -i dependencies.mmd -o dependencies.svg
 ```
 
-**Mermaid in Markdown:**
-You can embed Mermaid diagrams directly in Markdown files:
+**MarkdownでのMermaid:**
+Mermaidダイアグラムを直接Markdownファイルに埋め込むことができます：
 
 ````markdown
 ```mermaid
 graph TD
-    task_1_1["1.1: Setup database"]
+    task_1_1["1.1: データベースのセットアップ"]
     class task_1_1 ready
-    task_1_2["1.2: Implement auth"]
+    task_1_2["1.2: 認証の実装"]
     class task_1_2 blocked
     
     task_1_1 --> task_1_2
@@ -136,70 +136,70 @@ graph TD
 ```
 ````
 
-## Color Scheme
+## カラースキーム
 
-### Task States
+### タスクの状態
 
-| State | DOT Color | Mermaid Color | Meaning |
+| 状態 | DOTの色 | Mermaidの色 | 意味 |
 |-------|-----------|---------------|---------|
-| Ready | Light Green | #90EE90 | Task can be executed |
-| Running | Gold | #FFD700 | Task is currently executing |
-| Blocked | Light Gray | #D3D3D3 | Waiting for dependencies |
-| Done | Light Blue | #87CEEB | Task completed |
-| Failed | Light Coral | #FF6B6B | Task failed |
+| Ready | ライトグリーン | #90EE90 | タスクは実行可能 |
+| Running | ゴールド | #FFD700 | タスクは現在実行中 |
+| Blocked | ライトグレー | #D3D3D3 | 依存関係を待機中 |
+| Done | ライトブルー | #87CEEB | タスク完了 |
+| Failed | ライトコーラル | #FF6B6B | タスク失敗 |
 
-### Special Indicators
+### 特別な表示
 
-- **Optional Tasks**: Dashed border (both DOT and Mermaid)
-- **Regular Tasks**: Solid border
+- **オプションタスク**: 破線の枠（DOTとMermaidの両方）
+- **通常タスク**: 実線の枠
 
-## Execution Order
+## 実行順序
 
-The `get_execution_order()` method returns a list of task levels, where each level contains tasks that can be executed in parallel:
+`get_execution_order()`メソッドは、タスクレベルのリストを返します。各レベルには並列実行可能なタスクが含まれます：
 
 ```python
 execution_order = registry.get_execution_order("my-project")
 
-# Example output:
+# 出力例:
 # [
-#   ["1.1"],              # Level 1: Only task 1.1 can run
-#   ["1.2", "2.1"],       # Level 2: Tasks 1.2 and 2.1 can run in parallel
-#   ["2.2"],              # Level 3: Task 2.2 can run after level 2
-#   ["3.1"]               # Level 4: Task 3.1 runs last
+#   ["1.1"],              # レベル1: タスク1.1のみ実行可能
+#   ["1.2", "2.1"],       # レベル2: タスク1.2と2.1を並列実行可能
+#   ["2.2"],              # レベル3: レベル2の後にタスク2.2を実行可能
+#   ["3.1"]               # レベル4: タスク3.1を最後に実行
 # ]
 ```
 
-This is useful for:
-- Planning parallel execution
-- Understanding critical paths
-- Optimizing task scheduling
-- Identifying bottlenecks
+これは以下の用途に役立ちます：
+- 並列実行の計画
+- クリティカルパスの理解
+- タスクスケジューリングの最適化
+- ボトルネックの特定
 
-## Example Output
+## 出力例
 
-### DOT Format
+### DOT形式
 ```dot
 digraph TaskDependencies {
     rankdir=TB;
     node [shape=box, style=rounded];
 
-    "1.1" [label="1.1: Setup database schema", fillcolor="lightgreen", style="filled,rounded"];
-    "1.2" [label="1.2: Implement JWT authentication", fillcolor="lightgray", style="filled,rounded"];
-    "2.1" [label="2.1: Create login UI", fillcolor="lightgray", style="filled,rounded"];
+    "1.1" [label="1.1: データベーススキーマのセットアップ", fillcolor="lightgreen", style="filled,rounded"];
+    "1.2" [label="1.2: JWT認証の実装", fillcolor="lightgray", style="filled,rounded"];
+    "2.1" [label="2.1: ログインUIの作成", fillcolor="lightgray", style="filled,rounded"];
 
     "1.1" -> "1.2";
     "1.2" -> "2.1";
 }
 ```
 
-### Mermaid Format
+### Mermaid形式
 ```mermaid
 graph TD
-    task_1_1["1.1: Setup database schema"]
+    task_1_1["1.1: データベーススキーマのセットアップ"]
     class task_1_1 ready
-    task_1_2["1.2: Implement JWT authentication"]
+    task_1_2["1.2: JWT認証の実装"]
     class task_1_2 blocked
-    task_2_1["2.1: Create login UI"]
+    task_2_1["2.1: ログインUIの作成"]
     class task_2_1 blocked
 
     task_1_1 --> task_1_2
@@ -209,77 +209,77 @@ graph TD
     classDef blocked fill:#D3D3D3,stroke:#333,stroke-width:2px
 ```
 
-## API Reference
+## APIリファレンス
 
-### TaskRegistry Methods
+### TaskRegistryメソッド
 
 #### `export_dependency_graph_dot(spec_name: str) -> str`
 
-Export dependency graph in DOT format.
+依存関係グラフをDOT形式でエクスポートします。
 
-**Parameters:**
-- `spec_name`: Name of the spec/taskset
+**パラメータ:**
+- `spec_name`: 仕様/タスクセットの名前
 
-**Returns:**
-- DOT format string
+**戻り値:**
+- DOT形式の文字列
 
-**Raises:**
-- `TasksetNotFoundError`: If taskset doesn't exist
+**例外:**
+- `TasksetNotFoundError`: タスクセットが存在しない場合
 
 #### `export_dependency_graph_mermaid(spec_name: str) -> str`
 
-Export dependency graph in Mermaid format.
+依存関係グラフをMermaid形式でエクスポートします。
 
-**Parameters:**
-- `spec_name`: Name of the spec/taskset
+**パラメータ:**
+- `spec_name`: 仕様/タスクセットの名前
 
-**Returns:**
-- Mermaid format string
+**戻り値:**
+- Mermaid形式の文字列
 
-**Raises:**
-- `TasksetNotFoundError`: If taskset doesn't exist
+**例外:**
+- `TasksetNotFoundError`: タスクセットが存在しない場合
 
 #### `get_execution_order(spec_name: str) -> List[List[str]]`
 
-Calculate execution order using topological sort.
+トポロジカルソートを使用して実行順序を計算します。
 
-**Parameters:**
-- `spec_name`: Name of the spec/taskset
+**パラメータ:**
+- `spec_name`: 仕様/タスクセットの名前
 
-**Returns:**
-- List of levels, each containing task IDs that can run in parallel
+**戻り値:**
+- レベルのリスト。各レベルには並列実行可能なタスクIDが含まれます
 
-**Raises:**
-- `TasksetNotFoundError`: If taskset doesn't exist
+**例外:**
+- `TasksetNotFoundError`: タスクセットが存在しない場合
 
-### GraphVisualizer Class
+### GraphVisualizerクラス
 
-The `GraphVisualizer` class can also be used directly:
+`GraphVisualizer`クラスは直接使用することもできます：
 
 ```python
 from necrocode.task_registry import GraphVisualizer, Taskset
 
 visualizer = GraphVisualizer()
 
-# Generate DOT
+# DOTを生成
 dot_output = visualizer.generate_dot(taskset)
 
-# Generate Mermaid
+# Mermaidを生成
 mermaid_output = visualizer.generate_mermaid(taskset)
 
-# Get execution order
+# 実行順序を取得
 order = visualizer.get_execution_order(taskset)
 ```
 
-## Integration Examples
+## 統合例
 
-### With CI/CD
+### CI/CDとの統合
 
-Generate graphs automatically in your CI pipeline:
+CIパイプラインでグラフを自動生成：
 
 ```yaml
 # .github/workflows/visualize-tasks.yml
-name: Visualize Task Dependencies
+name: タスク依存関係の可視化
 
 on: [push]
 
@@ -289,29 +289,29 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      - name: Setup Python
+      - name: Pythonのセットアップ
         uses: actions/setup-python@v2
         with:
           python-version: '3.11'
       
-      - name: Install dependencies
+      - name: 依存関係のインストール
         run: |
           pip install -r requirements.txt
           sudo apt-get install graphviz
       
-      - name: Generate graphs
+      - name: グラフの生成
         run: python scripts/generate_graphs.py
       
-      - name: Upload artifacts
+      - name: アーティファクトのアップロード
         uses: actions/upload-artifact@v2
         with:
           name: dependency-graphs
           path: output/*.png
 ```
 
-### With Documentation
+### ドキュメントとの統合
 
-Include graphs in your project documentation:
+プロジェクトドキュメントにグラフを含める：
 
 ```python
 # docs/generate_docs.py
@@ -321,45 +321,45 @@ from pathlib import Path
 registry = TaskRegistry()
 spec_name = "my-project"
 
-# Generate Mermaid for docs
+# ドキュメント用のMermaidを生成
 mermaid = registry.export_dependency_graph_mermaid(spec_name)
 
-# Write to docs
+# ドキュメントに書き込み
 docs_file = Path("docs/task-dependencies.md")
 with open(docs_file, "w") as f:
-    f.write("# Task Dependencies\n\n")
+    f.write("# タスクの依存関係\n\n")
     f.write("```mermaid\n")
     f.write(mermaid)
     f.write("\n```\n")
 ```
 
-## Troubleshooting
+## トラブルシューティング
 
-### Circular Dependencies
+### 循環依存関係
 
-If you have circular dependencies, the execution order will include all remaining tasks in the final level:
+循環依存関係がある場合、実行順序の最終レベルに残りのタスクがすべて含まれます：
 
 ```python
 execution_order = registry.get_execution_order("my-project")
-# If circular dependency exists:
-# [..., ["task-a", "task-b", "task-c"]]  # All in same level indicates cycle
+# 循環依存関係が存在する場合:
+# [..., ["task-a", "task-b", "task-c"]]  # すべて同じレベルにあることは循環を示します
 ```
 
-### Large Graphs
+### 大規模なグラフ
 
-For tasksets with many tasks (>50), consider:
-- Using SVG format for better scalability
-- Filtering tasks by state before visualization
-- Breaking down into sub-graphs by component
+多数のタスク（50以上）を持つタスクセットの場合、以下を検討してください：
+- より良いスケーラビリティのためにSVG形式を使用
+- 可視化前に状態でタスクをフィルタリング
+- コンポーネントごとにサブグラフに分割
 
-### Special Characters
+### 特殊文字
 
-Task titles with special characters are automatically escaped:
-- DOT: Quotes and backslashes are escaped
-- Mermaid: IDs are sanitized (dots become underscores)
+特殊文字を含むタスクタイトルは自動的にエスケープされます：
+- DOT: 引用符とバックスラッシュがエスケープされます
+- Mermaid: IDがサニタイズされます（ドットはアンダースコアになります）
 
-## See Also
+## 関連ドキュメント
 
-- [Task Registry README](README.md) - Main documentation
-- [Design Document](../../.kiro/specs/task-registry/design.md) - Architecture details
-- [Requirements](../../.kiro/specs/task-registry/requirements.md) - Feature requirements
+- [タスクレジストリ README](README.md) - メインドキュメント
+- [設計ドキュメント](../../.kiro/specs/task-registry/design.md) - アーキテクチャの詳細
+- [要件](../../.kiro/specs/task-registry/requirements.md) - 機能要件

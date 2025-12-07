@@ -1,103 +1,103 @@
-# Integration Tests Guide
+# 統合テストガイド
 
-This guide explains how to run the integration tests for the Agent Runner.
+このガイドでは、Agent Runnerの統合テストの実行方法について説明します。
 
-## Test Files
+## テストファイル
 
-### 1. External Services Integration (`test_external_services_integration.py`)
-Tests integration with Task Registry, Repo Pool Manager, and Artifact Store.
+### 1. 外部サービス統合（`test_external_services_integration.py`）
+Task Registry、Repo Pool Manager、Artifact Storeとの統合をテストします。
 
-**Requirements:**
-- External services must be running
-- Set environment variables for service URLs
+**要件:**
+- 外部サービスが実行されている必要があります
+- サービスURLの環境変数を設定
 
-**Run:**
+**実行:**
 ```bash
-# Set service URLs (optional, defaults to localhost)
+# サービスURLを設定（オプション、デフォルトはlocalhost）
 export TASK_REGISTRY_URL="http://localhost:8080"
 export REPO_POOL_URL="http://localhost:8081"
 export ARTIFACT_STORE_URL="http://localhost:8082"
 
-# Enable integration tests
+# 統合テストを有効化
 export SKIP_INTEGRATION_TESTS="false"
 
-# Run tests
+# テストを実行
 pytest tests/test_external_services_integration.py -v
 ```
 
-### 2. LLM Integration (`test_llm_integration.py`)
-Tests integration with LLM services (OpenAI).
+### 2. LLM統合（`test_llm_integration.py`）
+LLMサービス（OpenAI）との統合をテストします。
 
-**Requirements:**
-- Valid OpenAI API key
-- Tests may incur API costs
+**要件:**
+- 有効なOpenAI APIキー
+- テストによりAPI料金が発生する可能性があります
 
-**Run:**
+**実行:**
 ```bash
-# Set API key
+# APIキーを設定
 export OPENAI_API_KEY="your-api-key-here"
 
-# Enable LLM tests
+# LLMテストを有効化
 export SKIP_LLM_TESTS="false"
 
-# Run tests
+# テストを実行
 pytest tests/test_llm_integration.py -v -m llm
 ```
 
-### 3. End-to-End Tests (`test_runner_e2e.py`)
-Tests complete task execution workflows.
+### 3. エンドツーエンドテスト（`test_runner_e2e.py`）
+完全なタスク実行ワークフローをテストします。
 
-**Requirements:**
-- Git installed and configured
-- Sufficient disk space for temporary workspaces
+**要件:**
+- Gitがインストールされ設定されている
+- 一時ワークスペース用の十分なディスク容量
 
-**Run:**
+**実行:**
 ```bash
-# Enable E2E tests
+# E2Eテストを有効化
 export SKIP_E2E_TESTS="false"
 
-# Run tests
+# テストを実行
 pytest tests/test_runner_e2e.py -v -m e2e
 ```
 
-### 4. Performance Tests (Updated)
-Tests execution performance including LLM call overhead.
+### 4. パフォーマンステスト（更新済み）
+LLM呼び出しのオーバーヘッドを含む実行パフォーマンスをテストします。
 
-**Run:**
+**実行:**
 ```bash
-# Run performance tests
+# パフォーマンステストを実行
 pytest tests/test_runner_performance.py -v -m performance
 pytest tests/test_parallel_runners.py -v -m performance
 ```
 
-## Test Markers
+## テストマーカー
 
-Use pytest markers to run specific test categories:
+pytestマーカーを使用して特定のテストカテゴリを実行：
 
 ```bash
-# Integration tests only
+# 統合テストのみ
 pytest -v -m integration
 
-# LLM tests only
+# LLMテストのみ
 pytest -v -m llm
 
-# E2E tests only
+# E2Eテストのみ
 pytest -v -m e2e
 
-# Performance tests only
+# パフォーマンステストのみ
 pytest -v -m performance
 
-# Slow tests only
+# 低速テストのみ
 pytest -v -m slow
 
-# Exclude slow tests
+# 低速テストを除外
 pytest -v -m "not slow"
 ```
 
-## Running All Tests
+## すべてのテストの実行
 
 ```bash
-# Run all tests (with services enabled)
+# すべてのテストを実行（サービスを有効化）
 export SKIP_INTEGRATION_TESTS="false"
 export SKIP_LLM_TESTS="false"
 export SKIP_E2E_TESTS="false"
@@ -109,12 +109,12 @@ pytest tests/test_external_services_integration.py \
        -v
 ```
 
-## CI/CD Configuration
+## CI/CD設定
 
-### GitHub Actions Example
+### GitHub Actionsの例
 
 ```yaml
-name: Integration Tests
+name: 統合テスト
 
 on: [push, pull_request]
 
@@ -141,17 +141,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      - name: Set up Python
+      - name: Pythonのセットアップ
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
       
-      - name: Install dependencies
+      - name: 依存関係のインストール
         run: |
           pip install -r requirements.txt
           pip install pytest
       
-      - name: Run integration tests
+      - name: 統合テストの実行
         env:
           SKIP_INTEGRATION_TESTS: "false"
           TASK_REGISTRY_URL: "http://localhost:8080"
@@ -160,65 +160,65 @@ jobs:
         run: |
           pytest tests/test_external_services_integration.py -v
       
-      - name: Run E2E tests
+      - name: E2Eテストの実行
         env:
           SKIP_E2E_TESTS: "false"
         run: |
           pytest tests/test_runner_e2e.py -v
 ```
 
-## Troubleshooting
+## トラブルシューティング
 
-### Tests are skipped
-- Check that environment variables are set correctly
-- Ensure `SKIP_*_TESTS` variables are set to `"false"` (string, not boolean)
+### テストがスキップされる
+- 環境変数が正しく設定されているか確認
+- `SKIP_*_TESTS`変数が`"false"`（文字列、ブール値ではない）に設定されているか確認
 
-### External service tests fail
-- Verify services are running: `curl http://localhost:8080/health`
-- Check service URLs are correct
-- Ensure network connectivity
+### 外部サービステストが失敗する
+- サービスが実行されているか確認: `curl http://localhost:8080/health`
+- サービスURLが正しいか確認
+- ネットワーク接続を確認
 
-### LLM tests fail
-- Verify API key is valid
-- Check API rate limits
-- Ensure sufficient API credits
+### LLMテストが失敗する
+- APIキーが有効か確認
+- APIレート制限を確認
+- 十分なAPIクレジットがあるか確認
 
-### E2E tests fail
-- Check Git is installed: `git --version`
-- Verify disk space is available
-- Check file permissions
+### E2Eテストが失敗する
+- Gitがインストールされているか確認: `git --version`
+- ディスク容量が利用可能か確認
+- ファイルのパーミッションを確認
 
-## Test Statistics
+## テスト統計
 
-- **External Services Integration**: 23 tests
-- **LLM Integration**: 20 tests
-- **End-to-End**: 18 tests
-- **Performance Updates**: 5 tests enhanced
-- **Total New Tests**: 61
+- **外部サービス統合**: 23テスト
+- **LLM統合**: 20テスト
+- **エンドツーエンド**: 18テスト
+- **パフォーマンス更新**: 5テスト強化
+- **新規テスト合計**: 61
 
-## Performance Benchmarks
+## パフォーマンスベンチマーク
 
-Expected performance ranges (with mocked implementations):
+期待されるパフォーマンス範囲（モック実装使用時）：
 
-- Single task execution: < 30 seconds
-- Workspace preparation: < 5 seconds
-- Commit and push: < 5 seconds
-- Artifact upload: < 10 seconds
-- LLM call overhead: 30-50% of total time
-- Parallel speedup: > 1.5x
+- 単一タスク実行: < 30秒
+- ワークスペース準備: < 5秒
+- コミットとプッシュ: < 5秒
+- アーティファクトアップロード: < 10秒
+- LLM呼び出しオーバーヘッド: 合計時間の30-50%
+- 並列高速化: > 1.5倍
 
-## Notes
+## 注意事項
 
-- Integration tests are designed to be idempotent
-- Tests clean up resources after execution
-- Temporary workspaces are created in system temp directory
-- Tests use mocking where appropriate to reduce external dependencies
-- Performance tests provide baseline metrics for regression detection
+- 統合テストは冪等性を持つように設計されています
+- テストは実行後にリソースをクリーンアップします
+- 一時ワークスペースはシステムの一時ディレクトリに作成されます
+- テストは外部依存関係を減らすために適切な場所でモックを使用します
+- パフォーマンステストはリグレッション検出のためのベースラインメトリクスを提供します
 
-## Support
+## サポート
 
-For issues or questions:
-1. Check test output for detailed error messages
-2. Review test documentation in source files
-3. Verify environment configuration
-4. Check service logs for external service issues
+問題や質問がある場合：
+1. 詳細なエラーメッセージについてテスト出力を確認
+2. ソースファイル内のテストドキュメントを確認
+3. 環境設定を確認
+4. 外部サービスの問題についてサービスログを確認

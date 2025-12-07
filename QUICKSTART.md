@@ -1,377 +1,184 @@
-# NecroCode Quick Start Guide
+# NecroCode クイックスタート
 
-Get started with NecroCode in 5 minutes.
-
-## Prerequisites
-
-- Python 3.11+
-- Git
-- Docker (optional, for containerized runners)
-- GitHub/GitLab account with API token
-
-## Installation
+## インストール
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/necrocode.git
-cd necrocode
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Make CLI executable
-chmod +x necrocode_cli.py
+cd kiroween-skeleton-crew
+pip install -e .
 ```
 
-## Quick Start
+## 基本的な使い方
 
-### 1. Setup Services
-
-Initialize NecroCode services with default configuration:
+### 1. サンプルプロジェクトを作成
 
 ```bash
-python necrocode_cli.py setup
+python examples/parallel_execution_demo.py
 ```
 
-This creates configuration files in `.necrocode/`:
-- `task_registry.json` - Task persistence
-- `repo_pool.json` - Repository workspace management
-- `dispatcher.json` - Task scheduling
-- `artifact_store.json` - Build artifacts
-- `review_pr_service.json` - PR automation
+これにより、5つのタスクを持つチャットアプリプロジェクトが作成されます。
 
-### 2. Configure Credentials
-
-Set required environment variables:
+### 2. タスク一覧を確認
 
 ```bash
-# GitHub token (required for PR creation)
-export GITHUB_TOKEN="your_github_token"
-
-# LLM API key (required for task implementation)
-export OPENAI_API_KEY="your_openai_api_key"
-
-# Optional: GitLab token
-export GITLAB_TOKEN="your_gitlab_token"
+python -m necrocode.cli list-tasks demo-chat-app
 ```
 
-### 3. Submit a Job
+出力例:
+```
+プロジェクト: demo-chat-app
+タスク数: 5
 
-Submit a job description in natural language:
+Task 1: プロジェクト構造作成
+  タイプ: setup
+  説明: 基本的なディレクトリとファイルを作成
+
+Task 2: データモデル実装 (依存: 1)
+  タイプ: backend
+  説明: UserとMessageのデータモデルを作成
+...
+```
+
+### 3. タスクを実行
+
+#### 手動モード（推奨）
 
 ```bash
-python necrocode_cli.py submit \
-  --project my-api \
-  --repo https://github.com/your-org/my-api.git \
-  "Create a REST API with user authentication and CRUD operations"
+python -m necrocode.cli execute demo-chat-app --workers 3 --mode manual
 ```
 
-This will:
-- Parse the job description
-- Generate a task breakdown
-- Create tasks in Task Registry
-- Return a job ID for tracking
+各タスクで以下が実行されます:
+1. 専用worktreeが作成される
+2. タスクコンテキストが生成される
+3. ユーザーに実装を促すメッセージが表示される
+4. ユーザーがKiroで実装
+5. 変更が自動的にコミットされる
 
-### 4. Start Services
-
-Start all NecroCode services:
+#### 自動モード（実験的）
 
 ```bash
-# Start in foreground (Ctrl+C to stop)
-python necrocode_cli.py start
-
-# Or start in background
-python necrocode_cli.py start --detached
+python -m necrocode.cli execute demo-chat-app --workers 3 --mode auto
 ```
 
-Services will:
-- Monitor Task Registry for ready tasks
-- Allocate workspace slots
-- Launch Agent Runners (Docker containers or local processes)
-- Execute tasks with LLM
-- Create PRs automatically
+Kiro CLIが自動的に呼び出されます。
 
-### 5. Monitor Progress
-
-Check job status:
+### 4. 実行状況を確認
 
 ```bash
-python necrocode_cli.py job status <job-id>
+# Worktreeの状態を確認
+git worktree list
+
+# 作成されたブランチを確認
+git branch
 ```
 
-View service logs:
+### 5. クリーンアップ
 
 ```bash
-# All services
-python necrocode_cli.py logs
-
-# Specific service
-python necrocode_cli.py logs --service dispatcher
-
-# Follow logs
-python necrocode_cli.py logs --follow
+python -m necrocode.cli cleanup
 ```
 
-Check service health:
+## 実行フロー
 
-```bash
-python necrocode_cli.py status
+```
+1. タスク定義を読み込み
+   ↓
+2. 依存関係を解決
+   ↓
+3. 実行可能なタスクを並列実行
+   ├─ Task 1 (worktree: worktrees/task-1)
+   ├─ Task 2 (worktree: worktrees/task-2)
+   └─ Task 3 (worktree: worktrees/task-3)
+   ↓
+4. 各タスクで:
+   - Worktreeを作成
+   - タスクコンテキストを生成
+   - Kiroを実行
+   - 変更をコミット
+   ↓
+5. 依存タスクが完了したら次のタスクを実行
+   ↓
+6. 全タスク完了
 ```
 
-### 6. Review Pull Requests
+## ディレクトリ構造
 
-Once tasks complete, PRs will be created automatically on GitHub/GitLab.
-
-Review and merge PRs:
-1. Go to your repository on GitHub
-2. Review the automated PRs
-3. Merge approved PRs
-
-## Example Workflow
-
-```bash
-# 1. Setup
-python necrocode_cli.py setup
-
-# 2. Configure credentials
-export GITHUB_TOKEN="ghp_..."
-export OPENAI_API_KEY="sk-..."
-
-# 3. Submit job
-JOB_ID=$(python necrocode_cli.py submit \
-  --project chat-app \
-  --repo https://github.com/me/chat-app.git \
-  "Create a real-time chat application with WebSocket support" | grep "Job submitted" | awk '{print $3}')
-
-# 4. Start services
-python necrocode_cli.py start --detached
-
-# 5. Monitor
-watch -n 5 "python necrocode_cli.py job status $JOB_ID"
-
-# 6. Stop when done
-python necrocode_cli.py stop
+実行中:
+```
+project/
+├── .git/                    # 共有リポジトリ
+├── .kiro/
+│   └── tasks/
+│       └── demo-chat-app/
+│           └── tasks.json   # タスク定義
+└── worktrees/               # 実行時に作成
+    ├── task-1/              # Task 1専用
+    │   ├── .kiro/
+    │   │   └── current-task.md
+    │   └── [実装ファイル]
+    ├── task-2/              # Task 2専用
+    └── task-3/              # Task 3専用
 ```
 
-## Configuration
+## カスタムタスクの作成
 
-### Dispatcher Configuration
+### タスク定義ファイル
 
-Edit `.necrocode/dispatcher.json`:
+`.kiro/tasks/{project-name}/tasks.json`:
 
 ```json
 {
-  "poll_interval": 5,
-  "scheduling_policy": "priority",
-  "max_global_concurrency": 10,
-  "agent_pools": [
+  "project": "my-project",
+  "tasks": [
     {
-      "name": "docker",
-      "type": "docker",
-      "max_concurrency": 5,
-      "cpu_quota": 4,
-      "memory_quota": 8192,
-      "config": {
-        "image": "necrocode/runner:latest"
-      }
+      "id": "1",
+      "title": "タスクのタイトル",
+      "description": "詳細な説明",
+      "dependencies": [],
+      "type": "backend",
+      "files_to_create": ["file1.py", "file2.py"],
+      "acceptance_criteria": [
+        "基準1",
+        "基準2"
+      ]
     }
   ]
 }
 ```
 
-### Skill Mapping
-
-Map task types to agent pools:
-
-```json
-{
-  "skill_mapping": {
-    "backend": ["docker"],
-    "frontend": ["docker"],
-    "database": ["docker"],
-    "qa": ["local"],
-    "default": ["local"]
-  }
-}
-```
-
-## Docker Runner Setup
-
-Build the runner image:
+### 実行
 
 ```bash
-cd docker
-docker build -t necrocode/runner:latest .
+python -m necrocode.cli execute my-project --workers 2 --mode manual
 ```
 
-Or use pre-built image:
+## トラブルシューティング
+
+### Worktreeが残っている
 
 ```bash
-docker pull necrocode/runner:latest
+# 全てクリーンアップ
+python -m necrocode.cli cleanup --force
+
+# または手動で
+git worktree remove worktrees/task-1 --force
 ```
 
-## Kubernetes Setup
-
-For production deployments:
+### ブランチが残っている
 
 ```bash
-# Apply Kubernetes manifests
-kubectl apply -f k8s/
-
-# Configure dispatcher for Kubernetes
-# Edit .necrocode/dispatcher.json:
-{
-  "agent_pools": [
-    {
-      "name": "k8s",
-      "type": "kubernetes",
-      "max_concurrency": 20,
-      "config": {
-        "namespace": "necrocode-agents",
-        "image": "necrocode/runner:latest"
-      }
-    }
-  ]
-}
+# ローカルブランチを削除
+git branch -D feature/task-1-*
 ```
 
-## Troubleshooting
+### タスクが見つからない
 
-### Services won't start
-
-Check logs:
 ```bash
-python necrocode_cli.py logs
+# タスク定義ファイルを確認
+ls -la .kiro/tasks/*/tasks.json
 ```
 
-Verify configuration:
-```bash
-ls -la .necrocode/
-cat .necrocode/dispatcher.json
-```
+## 次のステップ
 
-### Tasks not executing
-
-1. Check Dispatcher is running:
-   ```bash
-   python necrocode_cli.py status
-   ```
-
-2. Verify Task Registry has tasks:
-   ```bash
-   ls -la .necrocode/data/task_registry/
-   ```
-
-3. Check agent pool configuration:
-   ```bash
-   cat .necrocode/dispatcher.json | jq '.agent_pools'
-   ```
-
-### PRs not created
-
-1. Verify GitHub token:
-   ```bash
-   echo $GITHUB_TOKEN
-   ```
-
-2. Check Review PR Service logs:
-   ```bash
-   python necrocode_cli.py logs --service review_pr_service
-   ```
-
-3. Verify webhook configuration (if using webhooks)
-
-## Advanced Usage
-
-### Custom Task Breakdown
-
-Provide custom task breakdown instead of LLM generation:
-
-```python
-from necrocode.orchestration.job_submitter import JobSubmitter
-from necrocode.task_registry.models import Task, TaskState
-
-submitter = JobSubmitter()
-
-# Create custom tasks
-tasks = [
-    Task(
-        id="1",
-        title="Setup database schema",
-        description="Create User and Post models",
-        state=TaskState.PENDING,
-        dependencies=[],
-        required_skill="database"
-    ),
-    Task(
-        id="2",
-        title="Implement API endpoints",
-        description="Create REST endpoints for CRUD operations",
-        state=TaskState.PENDING,
-        dependencies=["1"],
-        required_skill="backend"
-    )
-]
-
-# Submit with custom tasks
-job_id = submitter.submit_job_with_tasks(
-    project_name="my-api",
-    tasks=tasks,
-    repo_url="https://github.com/me/my-api.git"
-)
-```
-
-### Parallel Execution
-
-Configure parallel execution limits:
-
-```json
-{
-  "max_global_concurrency": 20,
-  "agent_pools": [
-    {
-      "name": "docker-pool-1",
-      "max_concurrency": 10
-    },
-    {
-      "name": "docker-pool-2",
-      "max_concurrency": 10
-    }
-  ]
-}
-```
-
-### Custom Playbooks
-
-Define custom execution playbooks:
-
-```yaml
-# .necrocode/playbooks/backend-api.yaml
-name: Backend API Implementation
-steps:
-  - name: Setup
-    commands:
-      - npm install
-  - name: Implement
-    llm_prompt: "Implement the API endpoint as described"
-  - name: Test
-    commands:
-      - npm test
-  - name: Lint
-    commands:
-      - npm run lint
-```
-
-## Next Steps
-
-- Read [Architecture Guide](architecture.md) for system design
-- See [Development Guide](development.md) for contributing
-- Check [Examples](examples/) for more use cases
-- Join our [Discord](https://discord.gg/necrocode) for support
-
-## Support
-
-- Documentation: https://necrocode.dev/docs
-- Issues: https://github.com/your-org/necrocode/issues
-- Discord: https://discord.gg/necrocode
-- Email: support@necrocode.dev
+- [アーキテクチャ詳細](.kiro/steering/kiro-native-architecture.md)
+- [開発ガイド](.kiro/steering/development.md)
+- [タスクレジストリ](necrocode/task_registry/README.md)

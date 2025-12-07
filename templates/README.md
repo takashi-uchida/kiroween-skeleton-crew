@@ -1,23 +1,23 @@
-# PR Service Templates
+# PR Service テンプレート
 
-This directory contains Jinja2 templates used by the NecroCode Review & PR Service for generating pull request descriptions and comments.
+このディレクトリには、NecroCode Review & PR Serviceがプルリクエストの説明とコメントを生成するために使用するJinja2テンプレートが含まれています。
 
-## Available Templates
+## 利用可能なテンプレート
 
-### Pull Request Templates
+### プルリクエストテンプレート
 
-#### `pr-template.md` (Default)
+#### `pr-template.md` (デフォルト)
 
-The default template for pull request descriptions. Includes:
-- Task ID and title
-- Description
-- Acceptance criteria
-- Test results
-- Artifacts
-- Execution logs
-- Custom sections
+プルリクエスト説明のデフォルトテンプレート。以下を含みます：
+- タスクIDとタイトル
+- 説明
+- 受け入れ基準
+- テスト結果
+- アーティファクト
+- 実行ログ
+- カスタムセクション
 
-**Usage:**
+**使用方法:**
 ```python
 config = PRServiceConfig(
     template=TemplateConfig(
@@ -28,16 +28,16 @@ config = PRServiceConfig(
 
 #### `pr-template-comprehensive.md`
 
-A comprehensive template with additional sections:
-- Dependencies
-- Implementation details
-- Metrics (execution time, lines changed)
-- Review checklist
-- Deployment notes
-- Screenshots/demo
-- Related links
+追加セクションを含む包括的なテンプレート：
+- 依存関係
+- 実装の詳細
+- メトリクス（実行時間、変更行数）
+- レビューチェックリスト
+- デプロイメモ
+- スクリーンショット/デモ
+- 関連リンク
 
-**Usage:**
+**使用方法:**
 ```python
 config = PRServiceConfig(
     template=TemplateConfig(
@@ -46,19 +46,19 @@ config = PRServiceConfig(
 )
 ```
 
-### Comment Templates
+### コメントテンプレート
 
-#### `comment-template.md` (Default)
+#### `comment-template.md` (デフォルト)
 
-The default template for PR comments. Includes:
-- Message
-- Details (key-value pairs)
-- Test results summary
-- Failed tests
-- Links to logs and artifacts
-- Next steps
+PRコメントのデフォルトテンプレート。以下を含みます：
+- メッセージ
+- 詳細（キー・バリューペア）
+- テスト結果サマリー
+- 失敗したテスト
+- ログとアーティファクトへのリンク
+- 次のステップ
 
-**Usage:**
+**使用方法:**
 ```python
 config = PRServiceConfig(
     template=TemplateConfig(
@@ -69,17 +69,17 @@ config = PRServiceConfig(
 
 #### `comment-test-failure.md`
 
-Specialized template for test failure comments. Includes:
-- Test results table
-- Failed test details with errors
-- Stack traces (collapsible)
-- Resources and links
-- Next steps
-- Tips for resolution
+テスト失敗コメント用の専用テンプレート。以下を含みます：
+- テスト結果テーブル
+- エラー付きの失敗したテストの詳細
+- スタックトレース（折りたたみ可能）
+- リソースとリンク
+- 次のステップ
+- 解決のヒント
 
-**Usage:**
+**使用方法:**
 ```python
-# Automatically used by post_test_failure_comment()
+# post_test_failure_comment()によって自動的に使用されます
 pr_service.post_test_failure_comment(
     pr_id="123",
     test_results={...}
@@ -88,16 +88,16 @@ pr_service.post_test_failure_comment(
 
 #### `comment-conflict.md`
 
-Template for merge conflict notifications. Includes:
-- Conflict details
-- List of conflicting files
-- Resolution instructions (CLI, Web, IDE)
-- Resolution checklist
-- Tips and resources
+マージコンフリクト通知用のテンプレート。以下を含みます：
+- コンフリクトの詳細
+- コンフリクトしているファイルのリスト
+- 解決手順（CLI、Web、IDE）
+- 解決チェックリスト
+- ヒントとリソース
 
-**Usage:**
+**使用方法:**
 ```python
-# Automatically used when conflicts are detected
+# コンフリクトが検出された時に自動的に使用されます
 pr_service.post_conflict_comment(
     pr_id="123",
     conflict_details="..."
@@ -106,17 +106,17 @@ pr_service.post_conflict_comment(
 
 #### `comment-ci-success.md`
 
-Template for CI success notifications. Includes:
-- Build status table
-- Test results
-- Code coverage
-- Next steps (auto-merge status)
-- Pre-merge checklist
+CI成功通知用のテンプレート。以下を含みます：
+- ビルドステータステーブル
+- テスト結果
+- コードカバレッジ
+- 次のステップ（自動マージステータス）
+- マージ前チェックリスト
 
-**Usage:**
+**使用方法:**
 ```python
-# Automatically used by CI monitor on success
-# Or manually:
+# CI monitorによって成功時に自動的に使用されます
+# または手動で：
 pr_service.post_comment(
     pr_id="123",
     message="CI passed!",
@@ -124,78 +124,78 @@ pr_service.post_comment(
 )
 ```
 
-## Template Variables
+## テンプレート変数
 
-### Common Variables
+### 共通変数
 
-Available in all templates:
+全てのテンプレートで利用可能：
 
-- `message`: Main message text
-- `timestamp`: Current timestamp
-- `details`: Dictionary of key-value details
+- `message`: メインメッセージテキスト
+- `timestamp`: 現在のタイムスタンプ
+- `details`: キー・バリュー詳細の辞書
 
-### PR Template Variables
+### PRテンプレート変数
 
-Available in PR templates:
+PRテンプレートで利用可能：
 
-- `task_id`: Task identifier (e.g., "1.1")
-- `title`: Task title
-- `description`: Task description
-- `state`: Task state (DONE, IN_PROGRESS, etc.)
-- `created_at`: Task creation timestamp
-- `acceptance_criteria`: List of acceptance criteria
-- `dependencies`: List of task dependencies
-- `test_results`: Formatted test results
-- `artifact_links`: Formatted artifact links
-- `execution_logs`: Formatted execution logs
-- `execution_time`: Execution time in seconds
-- `source_branch`: Source branch name
-- `target_branch`: Target branch name
-- `custom_sections`: Dictionary of custom sections
+- `task_id`: タスク識別子（例："1.1"）
+- `title`: タスクタイトル
+- `description`: タスク説明
+- `state`: タスク状態（DONE、IN_PROGRESSなど）
+- `created_at`: タスク作成タイムスタンプ
+- `acceptance_criteria`: 受け入れ基準のリスト
+- `dependencies`: タスク依存関係のリスト
+- `test_results`: フォーマット済みテスト結果
+- `artifact_links`: フォーマット済みアーティファクトリンク
+- `execution_logs`: フォーマット済み実行ログ
+- `execution_time`: 実行時間（秒）
+- `source_branch`: ソースブランチ名
+- `target_branch`: ターゲットブランチ名
+- `custom_sections`: カスタムセクションの辞書
 
-### Comment Template Variables
+### コメントテンプレート変数
 
-Available in comment templates:
+コメントテンプレートで利用可能：
 
-- `test_results`: Dictionary with test statistics
-  - `total`: Total number of tests
-  - `passed`: Number of passed tests
-  - `failed`: Number of failed tests
-  - `skipped`: Number of skipped tests
-  - `duration`: Test duration in seconds
-  - `failed_tests`: List of failed test details
-- `error_log_url`: URL to error logs
-- `artifact_links`: Dictionary of artifact name to URL
-- `next_steps`: List of next steps
-- `ci_url`: URL to CI build
-- `ci_checks`: List of CI check results
-- `test_coverage`: Code coverage statistics
-- `conflicting_files`: List of files with conflicts
-- `conflict_details`: Detailed conflict information
-- `auto_merge_enabled`: Whether auto-merge is enabled
-- `approvals_received`: Number of approvals received
-- `approvals_required`: Number of approvals required
-- `draft_pr`: Whether PR is in draft mode
+- `test_results`: テスト統計情報の辞書
+  - `total`: テストの総数
+  - `passed`: 成功したテストの数
+  - `failed`: 失敗したテストの数
+  - `skipped`: スキップされたテストの数
+  - `duration`: テスト実行時間（秒）
+  - `failed_tests`: 失敗したテストの詳細リスト
+- `error_log_url`: エラーログへのURL
+- `artifact_links`: アーティファクト名からURLへの辞書
+- `next_steps`: 次のステップのリスト
+- `ci_url`: CIビルドへのURL
+- `ci_checks`: CIチェック結果のリスト
+- `test_coverage`: コードカバレッジ統計
+- `conflicting_files`: コンフリクトしているファイルのリスト
+- `conflict_details`: 詳細なコンフリクト情報
+- `auto_merge_enabled`: 自動マージが有効かどうか
+- `approvals_received`: 受け取った承認の数
+- `approvals_required`: 必要な承認の数
+- `draft_pr`: PRがドラフトモードかどうか
 
-## Creating Custom Templates
+## カスタムテンプレートの作成
 
-### Basic Template
+### 基本テンプレート
 
-Create a new Jinja2 template file:
+新しいJinja2テンプレートファイルを作成：
 
 ```markdown
 ## {{title}}
 
 {{description}}
 
-### Results
+### 結果
 {{test_results}}
 
 ---
-*Generated by NecroCode*
+*NecroCodeによって生成*
 ```
 
-### Using Custom Template
+### カスタムテンプレートの使用
 
 ```python
 config = PRServiceConfig(
@@ -207,58 +207,58 @@ config = PRServiceConfig(
 pr_service = PRService(config)
 ```
 
-### Adding Custom Data
+### カスタムデータの追加
 
 ```python
 pr = pr_service.create_pr(
     task=task,
     branch_name="feature/my-feature",
     custom_data={
-        "my_custom_field": "Custom value",
+        "my_custom_field": "カスタム値",
         "another_field": 123
     }
 )
 ```
 
-Access in template:
+テンプレート内でのアクセス：
 ```markdown
-### Custom Data
+### カスタムデータ
 - My Field: {{my_custom_field}}
 - Another: {{another_field}}
 ```
 
-### Adding Custom Sections
+### カスタムセクションの追加
 
 ```python
 engine = pr_service.template_engine
-engine.set_custom_section("Breaking Changes", "None")
-engine.set_custom_section("Migration Guide", "See docs/migration.md")
+engine.set_custom_section("Breaking Changes", "なし")
+engine.set_custom_section("Migration Guide", "docs/migration.mdを参照")
 ```
 
-## Template Best Practices
+## テンプレートのベストプラクティス
 
-### 1. Use Conditional Blocks
+### 1. 条件ブロックの使用
 
-Only show sections when data is available:
+データが利用可能な場合のみセクションを表示：
 
 ```jinja2
 {% if test_results %}
-### Test Results
+### テスト結果
 {{test_results}}
 {% endif %}
 ```
 
-### 2. Provide Defaults
+### 2. デフォルト値の提供
 
-Use default values for optional variables:
+オプション変数にデフォルト値を使用：
 
 ```jinja2
-{{message | default("No message provided")}}
+{{message | default("メッセージが提供されていません")}}
 ```
 
-### 3. Format Lists
+### 3. リストのフォーマット
 
-Iterate over lists properly:
+リストを適切に反復処理：
 
 ```jinja2
 {% for criterion in acceptance_criteria %}
@@ -266,42 +266,42 @@ Iterate over lists properly:
 {% endfor %}
 ```
 
-### 4. Use Filters
+### 4. フィルターの使用
 
-Jinja2 provides useful filters:
+Jinja2は便利なフィルターを提供：
 
 ```jinja2
-{{description | truncate(100)}}  # Truncate to 100 chars
-{{value | round(2)}}              # Round to 2 decimals
-{{text | upper}}                  # Convert to uppercase
+{{description | truncate(100)}}  # 100文字に切り詰め
+{{value | round(2)}}              # 小数点以下2桁に丸める
+{{text | upper}}                  # 大文字に変換
 ```
 
-### 5. Add Collapsible Sections
+### 5. 折りたたみ可能なセクションの追加
 
-Use HTML details for long content:
+長いコンテンツにはHTML detailsを使用：
 
 ```markdown
 <details>
-<summary>Click to expand</summary>
+<summary>クリックして展開</summary>
 
 {{long_content}}
 
 </details>
 ```
 
-### 6. Include Links
+### 6. リンクの含有
 
-Make templates actionable with links:
+リンクでテンプレートをアクション可能に：
 
 ```markdown
-- [View Logs]({{log_url}})
-- [CI Build]({{ci_url}})
-- [Documentation](https://docs.example.com)
+- [ログを表示]({{log_url}})
+- [CIビルド]({{ci_url}})
+- [ドキュメント](https://docs.example.com)
 ```
 
-## Template Testing
+## テンプレートのテスト
 
-Test your templates before deploying:
+デプロイ前にテンプレートをテスト：
 
 ```python
 from necrocode.review_pr_service import PRTemplateEngine, PRServiceConfig
@@ -314,79 +314,79 @@ config = PRServiceConfig(
 
 engine = PRTemplateEngine(config)
 
-# Test with sample data
+# サンプルデータでテスト
 result = engine.generate(
     task=sample_task,
-    acceptance_criteria=["Criterion 1", "Criterion 2"],
+    acceptance_criteria=["基準 1", "基準 2"],
     test_results={"total": 10, "passed": 10}
 )
 
 print(result)
 ```
 
-## Examples
+## 使用例
 
-See the `examples/` directory for complete usage examples:
+完全な使用例については`examples/`ディレクトリを参照：
 
-- `examples/pr_template_engine_example.py` - Template engine usage
-- `examples/basic_pr_service_usage.py` - Basic PR creation
-- `examples/github_setup.py` - GitHub configuration
+- `examples/pr_template_engine_example.py` - テンプレートエンジンの使用
+- `examples/basic_pr_service_usage.py` - 基本的なPR作成
+- `examples/github_setup.py` - GitHub設定
 
-## Troubleshooting
+## トラブルシューティング
 
-### Template Not Found
+### テンプレートが見つからない
 
-Ensure the template path is correct:
+テンプレートパスが正しいことを確認：
 
 ```python
 import os
 template_path = "templates/pr-template.md"
-assert os.path.exists(template_path), f"Template not found: {template_path}"
+assert os.path.exists(template_path), f"テンプレートが見つかりません: {template_path}"
 ```
 
-### Variable Not Defined
+### 変数が定義されていない
 
-Use conditional blocks or defaults:
+条件ブロックまたはデフォルト値を使用：
 
 ```jinja2
 {% if variable %}
 {{variable}}
 {% else %}
-*Not available*
+*利用不可*
 {% endif %}
 ```
 
-Or:
+または：
 
 ```jinja2
-{{variable | default("Not available")}}
+{{variable | default("利用不可")}}
 ```
 
-### Syntax Errors
+### 構文エラー
 
-Validate template syntax:
+テンプレート構文を検証：
 
 ```python
 engine = PRTemplateEngine(config)
 try:
     engine._load_template()
-    print("✅ Template syntax is valid")
+    print("✅ テンプレート構文は有効です")
 except Exception as e:
-    print(f"❌ Template syntax error: {e}")
+    print(f"❌ テンプレート構文エラー: {e}")
 ```
 
-## Contributing
+## コントリビューション
 
-When adding new templates:
+新しいテンプレートを追加する際：
 
-1. Follow the naming convention: `{type}-{purpose}.md`
-2. Document all variables used
-3. Add usage examples
-4. Test with real data
-5. Update this README
+1. 命名規則に従う：`{type}-{purpose}.md`
+2. 使用する全ての変数を文書化
+3. 使用例を追加
+4. 実際のデータでテスト
+5. このREADMEを更新
 
-## See Also
+## 関連情報
 
 - [PR Service README](../necrocode/review_pr_service/README.md)
-- [Jinja2 Documentation](https://jinja.palletsprojects.com/)
-- [Markdown Guide](https://www.markdownguide.org/)
+- [Jinja2ドキュメント](https://jinja.palletsprojects.com/)
+- [Markdownガイド](https://www.markdownguide.org/)
