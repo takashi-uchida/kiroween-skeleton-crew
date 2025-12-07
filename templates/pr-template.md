@@ -1,11 +1,11 @@
-## Task: {{task_id}} - {{title}}
+## タスク: {{task_id}} - {{title}}
 
-### 📋 Description
+### 📋 説明
 
 {{description}}
 
 {% if acceptance_criteria %}
-### ✅ Acceptance Criteria
+### ✅ 受け入れ基準
 
 {% for criterion in acceptance_criteria %}
 - [ ] {{criterion}}
@@ -13,27 +13,27 @@
 {% endif %}
 
 {% if test_results %}
-### 🧪 Test Results
+### 🧪 テスト結果
 
 {{test_results}}
 {% endif %}
 
 {% if artifact_links %}
-### 📦 Artifacts
+### 📦 アーティファクト
 
 {{artifact_links}}
 {% endif %}
 
 {% if execution_logs %}
-### 📝 Execution Logs
+### 📝 実行ログ
 
 {{execution_logs}}
 {% endif %}
 
 {% if execution_time %}
-### ⏱️ Execution Time
+### ⏱️ 実行時間
 
-Total execution time: **{{execution_time}}s**
+合計実行時間: **{{execution_time}}秒**
 {% endif %}
 
 {% if custom_sections %}
@@ -47,25 +47,25 @@ Total execution time: **{{execution_time}}s**
 ---
 
 <details>
-<summary>📚 Template Information</summary>
+<summary>📚 テンプレート情報</summary>
 
-This PR was automatically created by **NecroCode Review & PR Service**.
+このPRは**NecroCode Review & PR Service**によって自動的に作成されました。
 
-**Template Variables Available:**
-- `task_id`: Task identifier
-- `title`: Task title
-- `description`: Task description
-- `acceptance_criteria`: List of acceptance criteria
-- `test_results`: Test execution results
-- `artifact_links`: Links to artifacts (diffs, logs, reports)
-- `execution_logs`: Execution log details
-- `execution_time`: Total execution time in seconds
-- `custom_sections`: Custom sections added via API
+**利用可能なテンプレート変数:**
+- `task_id`: タスク識別子
+- `title`: タスクタイトル
+- `description`: タスク説明
+- `acceptance_criteria`: 受け入れ基準のリスト
+- `test_results`: テスト実行結果
+- `artifact_links`: アーティファクトへのリンク（差分、ログ、レポート）
+- `execution_logs`: 実行ログの詳細
+- `execution_time`: 合計実行時間（秒）
+- `custom_sections`: API経由で追加されたカスタムセクション
 
-**Customization:**
-You can customize this template by:
-1. Editing `templates/pr-template.md`
-2. Adding custom sections via `PRTemplateEngine.set_custom_section()`
-3. Passing custom data via `create_pr(custom_data={...})`
+**カスタマイズ:**
+このテンプレートは以下の方法でカスタマイズできます：
+1. `templates/pr-template.md`を編集
+2. `PRTemplateEngine.set_custom_section()`経由でカスタムセクションを追加
+3. `create_pr(custom_data={...})`経由でカスタムデータを渡す
 
 </details>

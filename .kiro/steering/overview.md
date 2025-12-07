@@ -1,78 +1,78 @@
-# NecroCode Overview
-## Quick Reference
-- **Purpose**: Explain NecroCode's value, concepts, and who benefits.
-- **Audience**: Stakeholders, onboarding developers, and spirits needing context.
-- **Read Next**: Technical design → architecture.md, implementation guide → development.md.
-## Product Vision
-NecroCode is an AI-powered multi-spirit development framework that transforms natural language job descriptions into fully implemented applications. It summons a team of specialized AI "spirits" that collaborate autonomously to design, implement, test, and deploy software projects.
-## Core Concept
-Instead of manually coordinating multiple developers, NecroCode:
-1. Takes a plain English/Japanese job description
-2. Summons specialized AI spirits (spirits) for each role
-3. Automatically generates detailed specs and task breakdowns
-4. Executes tasks in parallel across multiple spirit instances
-5. Creates pull requests in your GitHub workspace
-## Key Features
-### 🧙 Necromancer (Necromancer)
-- Parses job descriptions
-- Summons appropriate spirits
-- Coordinates the entire development lifecycle
-- Manages workspace isolation
+# NecroCode 概要
+## クイックリファレンス
+- **目的**: NecroCodeの価値、コンセプト、利用者について説明
+- **対象読者**: ステークホルダー、新規参加開発者、コンテキストが必要なスピリット
+- **次に読むべき文書**: 技術設計 → architecture.md、実装ガイド → development.md
+## プロダクトビジョン
+NecroCodeは、自然言語のジョブ記述を完全に実装されたアプリケーションに変換する、AI駆動のマルチスピリット開発フレームワークです。専門化されたAI「スピリット」のチームを召喚し、ソフトウェアプロジェクトの設計、実装、テスト、デプロイを自律的に協働して行います。
+## コアコンセプト
+複数の開発者を手動で調整する代わりに、NecroCodeは以下を実行します：
+1. 平易な英語/日本語のジョブ記述を受け取る
+2. 各役割に対して専門化されたAIスピリットを召喚
+3. 詳細な仕様とタスク分解を自動生成
+4. 複数のスピリットインスタンス間でタスクを並列実行
+5. GitHubワークスペースにプルリクエストを作成
+## 主要機能
+### 🧙 ネクロマンサー (Necromancer)
+- ジョブ記述を解析
+- 適切なスピリットを召喚
+- 開発ライフサイクル全体を調整
+- ワークスペースの分離を管理
 
-### 👻 Specialized Spirits
-- **Architect Spirit**: Creates specs from job descriptions
-- **Scrum Master Spirit**: Breaks down specs into tasks, assigns to spirits
-- **Developer Spirits**: Frontend, Backend, Database specialists
-- **QA Spirit**: Testing and quality assurance
-- **DevOps Spirit**: Deployment and infrastructure
+### 👻 専門化されたスピリット
+- **アーキテクトスピリット**: ジョブ記述から仕様を作成
+- **スクラムマスタースピリット**: 仕様をタスクに分解し、スピリットに割り当て
+- **開発者スピリット**: フロントエンド、バックエンド、データベースの専門家
+- **QAスピリット**: テストと品質保証
+- **DevOpsスピリット**: デプロイとインフラストラクチャ
 
-### 🔄 Multi-Instance Support
-- Multiple instances of the same spirit type work in parallel
-- Automatic load balancing across instances
-- Unique branch naming per instance (e.g., `frontend/spirit-1/login-ui`)
+### 🔄 マルチインスタンスサポート
+- 同じスピリットタイプの複数インスタンスが並列動作
+- インスタンス間の自動負荷分散
+- インスタンスごとの一意なブランチ命名（例：`frontend/spirit-1/login-ui`）
 
-### 📡 Spirit Protocol
-- Standardized communication format between spirits
-- Commit message format: `spirit(scope): description [Task X.Y]`
-- Branch naming: `feature/task-{spec}-{task-id}-{description}`
+### 📡 スピリットプロトコル
+- スピリット間の標準化された通信フォーマット
+- コミットメッセージ形式：`spirit(scope): description [Task X.Y]`
+- ブランチ命名：`feature/task-{spec}-{task-id}-{description}`
 
-### 🏗️ Workspace Management
-- Clones user's GitHub workspace dynamically
-- Creates isolated workspaces per spec
-- Manages branches and commits automatically
-- Prevents conflicts between concurrent specs
-## High-Level Workflow
-NecroCode always follows the same ritualized flow. See `architecture.md` for component internals and `development.md` for implementation details.
+### 🏗️ ワークスペース管理
+- ユーザーのGitHubワークスペースを動的にクローン
+- 仕様ごとに分離されたワークスペースを作成
+- ブランチとコミットを自動管理
+- 並行仕様間の競合を防止
+## ハイレベルワークフロー
+NecroCodeは常に同じ儀式化されたフローに従います。コンポーネントの内部構造については`architecture.md`を、実装の詳細については`development.md`を参照してください。
 ```
-User Input: "Create a real-time chat app with authentication"
+ユーザー入力: "認証機能付きのリアルタイムチャットアプリを作成"
      ↓
-Necromancer clones your repo → workspace-chat-app/
+Necromancerがリポジトリをクローン → workspace-chat-app/
      ↓
-Architect Spirit generates specs → .kiro/specs/chat-app/
+Architect Spiritが仕様を生成 → .kiro/specs/chat-app/
      ↓
-Scrum Master breaks into 15 tasks
+Scrum Masterが15個のタスクに分解
      ↓
-Backend Spirit 1 → Task 1.1 (JWT auth)
+Backend Spirit 1 → Task 1.1 (JWT認証)
 Backend Spirit 2 → Task 1.2 (WebSocket)
-Frontend Spirit 1 → Task 2.1 (Login UI)
-Frontend Spirit 2 → Task 2.2 (Chat UI)
+Frontend Spirit 1 → Task 2.1 (ログインUI)
+Frontend Spirit 2 → Task 2.2 (チャットUI)
      ↓
-Each spirit creates branch, commits, pushes PR
+各スピリットがブランチを作成、コミット、PRをプッシュ
      ↓
-Result: 15 PRs ready for review in your GitHub repo
+結果: GitHubリポジトリにレビュー準備完了の15個のPR
 ```
-## Target Users
-- Solo developers who need to scale productivity
-- Teams wanting to automate routine development tasks
-- Startups needing rapid prototyping
-- Anyone who wants to describe what they want and get working code
-## Differentiation
-Unlike traditional code generators:
-- **Multi-spirit collaboration**: Spirits work together like a real team
-- **Spec-driven**: Creates detailed design docs before coding
-- **Git-native**: Works directly with your workspace
-- **Parallel execution**: Multiple spirits work simultaneously
-- **Task-aware**: Understands dependencies and execution order
-## See Also
-- [architecture.md](architecture.md) — Spirit Protocol, components, data models
-- [development.md](development.md) — Directory structure, workflows, best practices
+## 対象ユーザー
+- 生産性を拡大する必要がある個人開発者
+- 日常的な開発タスクを自動化したいチーム
+- 迅速なプロトタイピングが必要なスタートアップ
+- 欲しいものを説明するだけで動作するコードを得たい全ての人
+## 差別化要因
+従来のコードジェネレーターとは異なり：
+- **マルチスピリット協働**: スピリットが実際のチームのように協力
+- **仕様駆動**: コーディング前に詳細な設計ドキュメントを作成
+- **Git ネイティブ**: ワークスペースと直接連携
+- **並列実行**: 複数のスピリットが同時に動作
+- **タスク認識**: 依存関係と実行順序を理解
+## 関連ドキュメント
+- [architecture.md](architecture.md) — スピリットプロトコル、コンポーネント、データモデル
+- [development.md](development.md) — ディレクトリ構造、ワークフロー、ベストプラクティス

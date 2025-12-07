@@ -1,37 +1,37 @@
-# NecroCode Architecture
+# NecroCode アーキテクチャ
 
-## Quick Reference
-- **Purpose**: Explain how NecroCode is assembled and how data flows through the system.
-- **Audience**: Architects, senior engineers, and spirits extending the framework.
-- **Read Next**: Product framing → `overview.md`, implementation guide → `development.md`.
+## クイックリファレンス
+- **目的**: NecroCodeの構成とシステム内のデータフローを説明
+- **対象読者**: アーキテクト、シニアエンジニア、フレームワークを拡張するスピリット
+- **次に読むべき文書**: プロダクト概要 → `overview.md`、実装ガイド → `development.md`
 
-## System Context
-NecroCode ingests a job description, decomposes it into specs in `.kiro/specs/`, and executes those specs through cooperating spirits. The orchestration stack is split across:
-- `framework/orchestrator/` (Necromancer, issue routing, workload monitoring)
-- `framework/workspace_manager/` (workspace lifecycle + Git automation)
-- `necrocode/task_registry/` (stateful task/event persistence)
-- `framework/agents/` + `strandsagents/` (LLM-backed execution helpers)
-- Optional services (Artifact Store, Repo Pool Manager, Dispatcher, Review PR Service) defined in `.kiro/specs/*`.
+## システムコンテキスト
+NecroCodeはジョブ記述を取り込み、`.kiro/specs/`内の仕様に分解し、協働するスピリットを通じてそれらの仕様を実行します。オーケストレーションスタックは以下に分割されています：
+- `framework/orchestrator/` (Necromancer、イシュールーティング、ワークロード監視)
+- `framework/workspace_manager/` (ワークスペースライフサイクル + Git自動化)
+- `necrocode/task_registry/` (ステートフルなタスク/イベント永続化)
+- `framework/agents/` + `strandsagents/` (LLMバックエンドの実行ヘルパー)
+- オプションサービス (Artifact Store、Repo Pool Manager、Dispatcher、Review PR Service) は`.kiro/specs/*`で定義
 
-## Technology Stack
-| Concern | Implementation |
+## 技術スタック
+| 関心事 | 実装 |
 | --- | --- |
-| Language / Runtime | Python 3.11+, `dataclasses`, `typing`, `asyncio`-ready components |
-| Data & Persistence | JSON files for registry/event logs (`necrocode/task_registry`), file-based locks |
-| Version Control | Native git CLI via `framework/workspace_manager/git_operations.py`, GitHub for PRs |
-| AI / LLM | OpenAI GPT-5 Codex via `strandsagents.llm.OpenAIChatClient` |
-| Messaging | Spirit Protocol payloads exchanged through message bus utilities (planned in dispatcher spec) |
+| 言語 / ランタイム | Python 3.11+、`dataclasses`、`typing`、`asyncio`対応コンポーネント |
+| データ & 永続化 | レジストリ/イベントログ用のJSONファイル (`necrocode/task_registry`)、ファイルベースのロック |
+| バージョン管理 | `framework/workspace_manager/git_operations.py`経由のネイティブgit CLI、PR用のGitHub |
+| AI / LLM | `strandsagents.llm.OpenAIChatClient`経由のOpenAI GPT-5 Codex |
+| メッセージング | メッセージバスユーティリティを通じて交換されるスピリットプロトコルペイロード (dispatcherスペックで計画中) |
 
-## Architectural Patterns
-- **Multi-Spirit Orchestration**: Necromancer summons multiple instances per role and balances load (see `.kiro/specs/necrocode-agent-orchestration`).
-- **Workspace Isolation**: Every spec executes inside a dedicated cloned workspace tracked by `WorkspaceManager`.
-- **Event Sourcing**: Task/Event stores append immutable logs that feed query engines (`necrocode/task_registry/event_store.py`).
-- **Pluggable Services**: Artifact Store, Repo Pool Manager, Agent Runner, and Review PR Service are standalone services that integrate via Spirit Protocol + Task Registry.
+## アーキテクチャパターン
+- **マルチスピリットオーケストレーション**: Necromancerが役割ごとに複数のインスタンスを召喚し、負荷を分散 (`.kiro/specs/necrocode-agent-orchestration`参照)
+- **ワークスペース分離**: 全ての仕様は`WorkspaceManager`によって追跡される専用のクローンワークスペース内で実行
+- **イベントソーシング**: タスク/イベントストアがクエリエンジンに供給される不変ログを追加 (`necrocode/task_registry/event_store.py`)
+- **プラガブルサービス**: Artifact Store、Repo Pool Manager、Agent Runner、Review PR Serviceは、スピリットプロトコル + タスクレジストリ経由で統合されるスタンドアロンサービス
 
-## Spirit Protocol Specification
-- **Commit Format**: `spirit(<scope>): <spell description> [Task <spec-task-id>]`. Example: `spirit(frontend): craft login form [Task 2.1]`.
-- **Branch Naming**: `feature/task-{spec-id}-{task-number}-{slug}` or `{role}/spirit-{instance}/{feature}` when multiple instances operate simultaneously. Slugs are sanitized through `framework/workspace_manager/branch_strategy.py`.
-- **Message Envelope**:
+## スピリットプロトコル仕様
+- **コミット形式**: `spirit(<scope>): <spell description> [Task <spec-task-id>]`。例：`spirit(frontend): craft login form [Task 2.1]`
+- **ブランチ命名**: `feature/task-{spec-id}-{task-number}-{slug}` または複数インスタンスが同時動作する場合は`{role}/spirit-{instance}/{feature}`。スラグは`framework/workspace_manager/branch_strategy.py`でサニタイズされます
+- **メッセージエンベロープ**:
   ```json
   {
     "type": "issue_assignment",
@@ -44,47 +44,47 @@ NecroCode ingests a job description, decomposes it into specs in `.kiro/specs/`,
     }
   }
   ```
-- **Metadata**: Each message or commit references `spec_id`, `task_id`, `agent_instance`, and optionally `issue_id` to enable traceability inside the Task Registry.
+- **メタデータ**: 各メッセージまたはコミットは`spec_id`、`task_id`、`agent_instance`、およびオプションで`issue_id`を参照し、タスクレジストリ内でのトレーサビリティを可能にします
 
-## Core Components
+## コアコンポーネント
 ### Necromancer (`framework/orchestrator/necromancer.py`)
-Parses job descriptions, assembles spirit teams, and coordinates sprint execution. Collaborates with IssueRouter, WorkspaceManager, and TaskRegistry to keep tasks flowing.
+ジョブ記述を解析し、スピリットチームを編成し、スプリント実行を調整します。IssueRouter、WorkspaceManager、TaskRegistryと協働してタスクの流れを維持します。
 
 ### Issue Router (`framework/orchestrator/issue_router.py`)
-Routes backlog items to the best spirit type/instance using keyword rules and workload awareness. Supports bilingual keyword dictionaries and least-busy scheduling.
+キーワードルールとワークロード認識を使用して、バックログアイテムを最適なスピリットタイプ/インスタンスにルーティングします。バイリンガルキーワード辞書と最小負荷スケジューリングをサポートします。
 
 ### Workspace Manager (`framework/workspace_manager/*.py`)
-Owns workspace lifecycle: cloning repos, generating branches/commits, pushing changes, and persisting workspace state (`state_tracker.py`). Enforces Spirit Protocol naming via `branch_strategy.py`.
+ワークスペースライフサイクルを所有：リポジトリのクローン、ブランチ/コミットの生成、変更のプッシュ、ワークスペース状態の永続化 (`state_tracker.py`)。`branch_strategy.py`経由でスピリットプロトコル命名を強制します。
 
-### Repo Pool Manager (spec in `.kiro/specs/repo-pool-manager`)
-Service responsible for keeping a pool of warm git workspaces ready for agents. It handles slot allocation, slot cleaning, LRU assignment, and stale lock cleanup.
+### Repo Pool Manager (`.kiro/specs/repo-pool-manager`のスペック)
+エージェント用にウォームなgitワークスペースのプールを維持するサービス。スロット割り当て、スロットクリーニング、LRU割り当て、古いロックのクリーンアップを処理します。
 
 ### Agent Runner (`.kiro/specs/agent-runner`)
-Executes individual spec tasks by coordinating workspace operations, TestRunner, ArtifactUploader, and PlaybookEngine. The RunnerOrchestrator integrates with Task Registry + Artifact Store.
+ワークスペース操作、TestRunner、ArtifactUploader、PlaybookEngineを調整して個別の仕様タスクを実行します。RunnerOrchestratorはタスクレジストリ + Artifact Storeと統合されます。
 
 ### Artifact Store (`.kiro/specs/artifact-store`)
-Persists diffs, logs, test outputs, and binary artifacts generated by spirits. Provides retrieval APIs for Review PR Service and downstream tooling.
+スピリットによって生成された差分、ログ、テスト出力、バイナリアーティファクトを永続化します。Review PR Serviceおよび下流ツール用の取得APIを提供します。
 
 ### Task Registry (`necrocode/task_registry/*`)
-Source of truth for specs, tasks, task states, events, and artifacts. Components include `task_store.py`, `event_store.py`, `lock_manager.py`, and querying/graph visualization helpers.
+仕様、タスク、タスク状態、イベント、アーティファクトの信頼できる情報源。コンポーネントには`task_store.py`、`event_store.py`、`lock_manager.py`、およびクエリ/グラフ可視化ヘルパーが含まれます。
 
 ### Dispatcher & Review PR Service
-Dispatcher assigns ready tasks to runners based on skills/availability. Review PR Service consumes commits/artifacts, runs review heuristics, and reports findings back to the registry.
+Dispatcherはスキル/可用性に基づいて準備完了タスクをランナーに割り当てます。Review PR Serviceはコミット/アーティファクトを消費し、レビューヒューリスティックを実行し、結果をレジストリに報告します。
 
-## Data Models
-- **Taskset / Task / TaskEvent** – defined in `necrocode/task_registry/models.py`, capture spec metadata, dependency graphs, and lifecycle events.
-- **Artifact** – stored alongside tasks with `type`, `uri`, size, and timestamps (`task_registry/task_registry.py::add_artifact`).
-- **WorkspaceInfo** – persisted via `framework/workspace_manager/state_tracker.py` with workspace path, repo URL, branch, and status flags.
-- **AgentInstance & Issue** – defined in `.kiro/specs/necrocode-agent-orchestration` implementation; hold routing metadata (role, workload, assigned branches).
-- **Slot / Pool / AllocationMetrics** – planned data models for Repo Pool Manager, ensuring slots are persisted with state and health information.
+## データモデル
+- **Taskset / Task / TaskEvent** – `necrocode/task_registry/models.py`で定義、仕様メタデータ、依存関係グラフ、ライフサイクルイベントをキャプチャ
+- **Artifact** – `type`、`uri`、サイズ、タイムスタンプと共にタスクと並行して保存 (`task_registry/task_registry.py::add_artifact`)
+- **WorkspaceInfo** – ワークスペースパス、リポジトリURL、ブランチ、ステータスフラグと共に`framework/workspace_manager/state_tracker.py`経由で永続化
+- **AgentInstance & Issue** – `.kiro/specs/necrocode-agent-orchestration`実装で定義、ルーティングメタデータ（役割、ワークロード、割り当てられたブランチ）を保持
+- **Slot / Pool / AllocationMetrics** – Repo Pool Manager用の計画されたデータモデル、スロットが状態とヘルス情報と共に永続化されることを保証
 
-## Quality Attributes
-- **Performance**: Workspace creation dominated by git clone/pull; state and registry operations are O(1) file writes; issue routing is O(n) relative to agent instances.
-- **Security**: Secrets pulled from environment (e.g., `OPENAI_API_KEY`), no secrets persisted in logs. Workspace isolation avoids cross-contamination. Artifact URIs reference storage backends with access controls.
-- **Scalability**: Horizontal scale via multiple agent instances + Repo Pool Manager slots. Task Registry handles concurrent updates through file locks. Dispatcher/Agent Runner specs describe stateless workers.
-- **Observability**: Structured logging for routing/runner decisions, event logs in `event_store.py`, metrics hooks outlined in agent-runner spec for future Prometheus reporting.
+## 品質属性
+- **パフォーマンス**: ワークスペース作成はgit clone/pullが支配的、状態とレジストリ操作はO(1)のファイル書き込み、イシュールーティングはエージェントインスタンスに対してO(n)
+- **セキュリティ**: シークレットは環境から取得（例：`OPENAI_API_KEY`）、ログにシークレットは永続化されない。ワークスペース分離により相互汚染を回避。アーティファクトURIはアクセス制御付きのストレージバックエンドを参照
+- **スケーラビリティ**: 複数のエージェントインスタンス + Repo Pool Managerスロット経由の水平スケール。タスクレジストリはファイルロックを通じて並行更新を処理。Dispatcher/Agent Runnerスペックはステートレスワーカーを記述
+- **可観測性**: ルーティング/ランナー決定用の構造化ログ、`event_store.py`のイベントログ、将来のPrometheusレポート用にagent-runnerスペックで概説されたメトリクスフック
 
-## Cross-References
-- For terminology + product framing: `overview.md`
-- For directory layout, coding standards, and workflows: `development.md`
-- For service-level requirements: `.kiro/specs/*/requirements.md`
+## 相互参照
+- 用語 + プロダクト概要: `overview.md`
+- ディレクトリレイアウト、コーディング標準、ワークフロー: `development.md`
+- サービスレベル要件: `.kiro/specs/*/requirements.md`

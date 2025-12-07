@@ -1,82 +1,82 @@
-## ✅ CI Checks Passed
+## ✅ CIチェック成功
 
-{{message | default("All continuous integration checks have passed successfully!")}}
+{{message | default("全ての継続的インテグレーションチェックが正常に完了しました！")}}
 
 ---
 
-### 🎉 Build Status
+### 🎉 ビルドステータス
 
-| Check | Status | Duration |
+| チェック | ステータス | 実行時間 |
 |-------|--------|----------|
 {% if ci_checks %}
 {% for check in ci_checks %}
-| {{check.name}} | ✅ Passed | {{check.duration}}s |
+| {{check.name}} | ✅ 成功 | {{check.duration}}秒 |
 {% endfor %}
 {% else %}
-| All Checks | ✅ Passed | {{duration | default("N/A")}} |
+| 全チェック | ✅ 成功 | {{duration | default("N/A")}} |
 {% endif %}
 
 ---
 
 {% if test_results %}
-### 🧪 Test Results
+### 🧪 テスト結果
 
-- **Total Tests:** {{test_results.total}}
-- **Passed:** ✅ {{test_results.passed}} (100%)
-- **Failed:** ❌ 0
-- **Duration:** ⏱️ {{test_results.duration}}s
+- **総テスト数:** {{test_results.total}}
+- **成功:** ✅ {{test_results.passed}} (100%)
+- **失敗:** ❌ 0
+- **実行時間:** ⏱️ {{test_results.duration}}秒
 
 {% if test_coverage %}
-### 📊 Code Coverage
+### 📊 コードカバレッジ
 
-- **Line Coverage:** {{test_coverage.line}}%
-- **Branch Coverage:** {{test_coverage.branch}}%
-- **Function Coverage:** {{test_coverage.function}}%
+- **ライン カバレッジ:** {{test_coverage.line}}%
+- **ブランチ カバレッジ:** {{test_coverage.branch}}%
+- **関数 カバレッジ:** {{test_coverage.function}}%
 
 {% if test_coverage.line >= 80 %}
-✅ Coverage meets the minimum threshold (80%)
+✅ カバレッジは最小閾値（80%）を満たしています
 {% else %}
-⚠️ Coverage is below the minimum threshold (80%)
+⚠️ カバレッジは最小閾値（80%）を下回っています
 {% endif %}
 {% endif %}
 {% endif %}
 
 ---
 
-### 🚀 Next Steps
+### 🚀 次のステップ
 
 {% if auto_merge_enabled %}
-- ✅ This PR is eligible for auto-merge
-- 🔄 Waiting for required approvals ({{approvals_received}}/{{approvals_required}})
+- ✅ このPRは自動マージの対象です
+- 🔄 必要な承認を待機中 ({{approvals_received}}/{{approvals_required}})
 {% if approvals_received >= approvals_required %}
-- 🎯 **Ready to merge!** This PR will be automatically merged soon.
+- 🎯 **マージ準備完了！** このPRはまもなく自動的にマージされます。
 {% endif %}
 {% else %}
-- ✅ This PR is ready for review
-- 👀 Waiting for reviewer approval
-- 🔀 Manual merge required after approval
+- ✅ このPRはレビュー準備完了です
+- 👀 レビュアーの承認を待機中
+- 🔀 承認後に手動マージが必要です
 {% endif %}
 
 ---
 
 {% if draft_pr %}
-### 📝 Draft Status
+### 📝 ドラフトステータス
 
-This PR is currently in **draft** mode.
+このPRは現在**ドラフト**モードです。
 
 {% if convert_draft_on_success %}
-✅ **Converting to ready for review** since all CI checks passed.
+✅ 全てのCIチェックが成功したため、**レビュー準備完了に変換中**です。
 {% else %}
-💡 Mark as "Ready for review" when you're done with changes.
+💡 変更が完了したら「レビュー準備完了」としてマークしてください。
 {% endif %}
 {% endif %}
 
 ---
 
-### 🔗 Links
+### 🔗 リンク
 
 {% if ci_url %}
-- [View CI Build Details]({{ci_url}})
+- [CIビルド詳細を表示]({{ci_url}})
 {% endif %}
 {% if artifact_links %}
 {% for name, url in artifact_links.items() %}
@@ -86,17 +86,17 @@ This PR is currently in **draft** mode.
 
 ---
 
-### 📋 Pre-Merge Checklist
+### 📋 マージ前チェックリスト
 
-- [x] All CI checks passed
-- [x] All tests passed
+- [x] 全てのCIチェックが成功
+- [x] 全てのテストが成功
 {% if test_coverage %}
-- [{{  "x" if test_coverage.line >= 80 else " " }}] Code coverage meets threshold
+- [{{  "x" if test_coverage.line >= 80 else " " }}] コードカバレッジが閾値を満たしている
 {% endif %}
-- [{{  "x" if approvals_received >= approvals_required else " " }}] Required approvals received ({{approvals_received}}/{{approvals_required}})
-- [ ] Final review completed
-- [ ] Ready to merge
+- [{{  "x" if approvals_received >= approvals_required else " " }}] 必要な承認を受領 ({{approvals_received}}/{{approvals_required}})
+- [ ] 最終レビュー完了
+- [ ] マージ準備完了
 
 ---
 
-<sub>🤖 Posted by **NecroCode Review & PR Service** | CI completed at: {{timestamp}}</sub>
+<sub>🤖 **NecroCode Review & PR Service**によって投稿 | CI完了時刻: {{timestamp}}</sub>

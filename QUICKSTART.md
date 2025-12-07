@@ -1,131 +1,131 @@
-# NecroCode Quick Start Guide
+# NecroCode クイックスタートガイド
 
-Get started with NecroCode in 5 minutes.
+5分でNecroCodeを始めましょう。
 
-## Prerequisites
+## 前提条件
 
 - Python 3.11+
 - Git
-- Docker (optional, for containerized runners)
-- GitHub/GitLab account with API token
+- Docker（オプション、コンテナ化されたランナー用）
+- APIトークン付きのGitHub/GitLabアカウント
 
-## Installation
+## インストール
 
 ```bash
-# Clone the repository
+# リポジトリをクローン
 git clone https://github.com/your-org/necrocode.git
 cd necrocode
 
-# Install dependencies
+# 依存関係をインストール
 pip install -r requirements.txt
 
-# Make CLI executable
+# CLIを実行可能にする
 chmod +x necrocode_cli.py
 ```
 
-## Quick Start
+## クイックスタート
 
-### 1. Setup Services
+### 1. サービスのセットアップ
 
-Initialize NecroCode services with default configuration:
+デフォルト設定でNecroCodeサービスを初期化：
 
 ```bash
 python necrocode_cli.py setup
 ```
 
-This creates configuration files in `.necrocode/`:
-- `task_registry.json` - Task persistence
-- `repo_pool.json` - Repository workspace management
-- `dispatcher.json` - Task scheduling
-- `artifact_store.json` - Build artifacts
-- `review_pr_service.json` - PR automation
+これにより`.necrocode/`に設定ファイルが作成されます：
+- `task_registry.json` - タスク永続化
+- `repo_pool.json` - リポジトリワークスペース管理
+- `dispatcher.json` - タスクスケジューリング
+- `artifact_store.json` - ビルドアーティファクト
+- `review_pr_service.json` - PR自動化
 
-### 2. Configure Credentials
+### 2. 認証情報の設定
 
-Set required environment variables:
+必要な環境変数を設定：
 
 ```bash
-# GitHub token (required for PR creation)
+# GitHubトークン（PR作成に必要）
 export GITHUB_TOKEN="your_github_token"
 
-# LLM API key (required for task implementation)
+# LLM APIキー（タスク実装に必要）
 export OPENAI_API_KEY="your_openai_api_key"
 
-# Optional: GitLab token
+# オプション：GitLabトークン
 export GITLAB_TOKEN="your_gitlab_token"
 ```
 
-### 3. Submit a Job
+### 3. ジョブの投稿
 
-Submit a job description in natural language:
+自然言語でジョブ記述を投稿：
 
 ```bash
 python necrocode_cli.py submit \
   --project my-api \
   --repo https://github.com/your-org/my-api.git \
-  "Create a REST API with user authentication and CRUD operations"
+  "ユーザー認証とCRUD操作を持つREST APIを作成"
 ```
 
-This will:
-- Parse the job description
-- Generate a task breakdown
-- Create tasks in Task Registry
-- Return a job ID for tracking
+これにより：
+- ジョブ記述を解析
+- タスク分解を生成
+- タスクレジストリにタスクを作成
+- 追跡用のジョブIDを返却
 
-### 4. Start Services
+### 4. サービスの起動
 
-Start all NecroCode services:
+全てのNecroCodeサービスを起動：
 
 ```bash
-# Start in foreground (Ctrl+C to stop)
+# フォアグラウンドで起動（Ctrl+Cで停止）
 python necrocode_cli.py start
 
-# Or start in background
+# またはバックグラウンドで起動
 python necrocode_cli.py start --detached
 ```
 
-Services will:
-- Monitor Task Registry for ready tasks
-- Allocate workspace slots
-- Launch Agent Runners (Docker containers or local processes)
-- Execute tasks with LLM
-- Create PRs automatically
+サービスは以下を実行：
+- タスクレジストリで準備完了タスクを監視
+- ワークスペーススロットを割り当て
+- Agent Runnerを起動（Dockerコンテナまたはローカルプロセス）
+- LLMでタスクを実行
+- PRを自動作成
 
-### 5. Monitor Progress
+### 5. 進捗の監視
 
-Check job status:
+ジョブステータスを確認：
 
 ```bash
 python necrocode_cli.py job status <job-id>
 ```
 
-View service logs:
+サービスログを表示：
 
 ```bash
-# All services
+# 全サービス
 python necrocode_cli.py logs
 
-# Specific service
+# 特定のサービス
 python necrocode_cli.py logs --service dispatcher
 
-# Follow logs
+# ログをフォロー
 python necrocode_cli.py logs --follow
 ```
 
-Check service health:
+サービスヘルスを確認：
 
 ```bash
 python necrocode_cli.py status
 ```
 
-### 6. Review Pull Requests
+### 6. プルリクエストのレビュー
 
-Once tasks complete, PRs will be created automatically on GitHub/GitLab.
+タスクが完了すると、GitHub/GitLabに自動的にPRが作成されます。
 
-Review and merge PRs:
-1. Go to your repository on GitHub
-2. Review the automated PRs
-3. Merge approved PRs
+PRをレビューしてマージ：
+1. GitHubのリポジトリに移動
+2. 自動化されたPRをレビュー
+3. 承認されたPRをマージ
 
 ## Example Workflow
 

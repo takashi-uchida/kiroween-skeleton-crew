@@ -1,0 +1,84 @@
+test_complete_workflow_mocked (__main__.TestE2EIntegration)
+Test complete workflow with mocked components. ... Failed to get task states: 'list' object has no attribute 'items'
+Failed to get task states: 'list' object has no attribute 'items'
+ERROR
+test_dispatcher_integration (__main__.TestE2EIntegration)
+Test Dispatcher integration with mocked runner. ... Exception in thread Thread-1:
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 973, in _bootstrap_inner
+    self.run()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/threading.py", line 910, in run
+    self._target(*self._args, **self._kwargs)
+  File "/Users/takashi/Documents/kiroween-skeleton-crew/necrocode/dispatcher/dispatcher_core.py", line 136, in start
+    signal.signal(signal.SIGINT, self._signal_handler)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/signal.py", line 47, in signal
+    handler = _signal.signal(_enum_to_int(signalnum), _enum_to_int(handler))
+ValueError: signal only works in main thread of the main interpreter
+FAIL
+test_job_submission (__main__.TestE2EIntegration)
+Test job submission workflow. ... Failed to get task states: 'list' object has no attribute 'items'
+ok
+test_service_manager_setup (__main__.TestE2EIntegration)
+Test ServiceManager setup. ... ok
+test_task_registry_integration (__main__.TestE2EIntegration)
+Test Task Registry integration. ... Failed to get task states: 'list' object has no attribute 'items'
+ok
+
+======================================================================
+ERROR: test_complete_workflow_mocked (__main__.TestE2EIntegration)
+Test complete workflow with mocked components.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/takashi/Documents/kiroween-skeleton-crew/tests/test_e2e_integration.py", line 303, in test_complete_workflow_mocked
+    print(f"   Tasks completed: {final_status['tasks_completed']}/{final_status['tasks_total']}")
+KeyError: 'tasks_completed'
+
+======================================================================
+FAIL: test_dispatcher_integration (__main__.TestE2EIntegration)
+Test Dispatcher integration with mocked runner.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/unittest/mock.py", line 1337, in patched
+    return func(*newargs, **newkeywargs)
+  File "/Users/takashi/Documents/kiroween-skeleton-crew/tests/test_e2e_integration.py", line 227, in test_dispatcher_integration
+    self.assertTrue(mock_launch.called)
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.362s
+
+FAILED (failures=1, errors=1)
+
+============================================================
+Testing Complete Workflow (Mocked)
+============================================================
+
+1. Setting up services...
+   ✅ Services configured
+
+2. Submitting job...
+   ✅ Job submitted: job-54ed18186168
+
+3. Verifying Task Registry...
+   ✅ Spec created: user-api-job-54ed
+   ✅ Tasks: 3
+      - Task 1: Project setup and structure (ready)
+      - Task 2: Core implementation (blocked)
+      - Task 3: Testing and documentation (blocked)
+
+4. Simulating task execution...
+   🔄 Task 1: RUNNING
+   ✅ Task 1: DONE
+   🔄 Task 2: RUNNING
+   ✅ Task 2: DONE
+   🔄 Task 3: RUNNING
+   ✅ Task 3: DONE
+
+5. Verifying completion...
+   Job status: running
+✅ Job submission test passed: job-02946e290700
+   Tasks created: 3
+✅ Service manager setup test passed
+✅ Task Registry integration test passed
+   Spec: test-webapp-job-5de0
+   Tasks: 3
