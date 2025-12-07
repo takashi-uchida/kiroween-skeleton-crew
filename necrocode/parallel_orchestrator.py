@@ -6,7 +6,14 @@ import json
 import subprocess
 
 from necrocode.worktree_manager import WorktreeManager
-from necrocode.task_registry import TaskRegistry
+from necrocode.task_registry import (
+    InvalidStateTransitionError,
+    TaskNotFoundError,
+    TaskRegistry,
+    TaskRegistryError,
+    TaskState,
+    TasksetNotFoundError,
+)
 from necrocode.progress_monitor import ProgressMonitor
 
 
@@ -40,6 +47,12 @@ class ParallelOrchestrator:
                         if self.show_progress:
                             monitor.start_task(task["id"], task["title"])
                         
+                        self._update_task_state(
+                            project_name,
+                            task["id"],
+                            TaskState.RUNNING,
+                        )
+                        
                         future = executor.submit(
                             execute_task_in_worktree,
                             self.project_dir,
@@ -56,6 +69,12 @@ class ParallelOrchestrator:
                             completed_tasks.add(task_id)
                             done_ids.append(task_id)
                             
+                            self._update_task_state(
+                                project_name,
+                                task_id,
+                                TaskState.DONE,
+                            )
+                            
                             if self.show_progress:
                                 monitor.complete_task(task_id, success=True)
                             else:
@@ -64,6 +83,12 @@ class ParallelOrchestrator:
                         except Exception as e:
                             completed_tasks.add(task_id)
                             done_ids.append(task_id)
+                            
+                            self._update_task_state(
+                                project_name,
+                                task_id,
+                                TaskState.FAILED,
+                            )
                             
                             if self.show_progress:
                                 monitor.complete_task(task_id, success=False)
@@ -93,6 +118,22 @@ class ParallelOrchestrator:
             if deps.issubset(completed):
                 ready.append(task)
         return ready
+
+    def _update_task_state(self, spec_name: str, task_id: str, new_state: TaskState) -> None:
+        """Update Task Registry state, tolerating missing specs/tasks."""
+        try:
+            self.task_registry.update_task_state(
+                spec_name,
+                task_id,
+                new_state,
+                metadata={"updated_by": "parallel_orchestrator"},
+            )
+        except (TasksetNotFoundError, TaskNotFoundError):
+            return
+        except InvalidStateTransitionError as exc:
+            print(f"⚠️ Task {task_id} の状態更新に失敗しました: {exc}")
+        except TaskRegistryError as exc:
+            print(f"⚠️ Task Registry との同期に失敗しました: {exc}")
 
 
 def execute_task_in_worktree(project_dir: Path, task: Dict, kiro_mode: str = "manual") -> Dict:
