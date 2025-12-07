@@ -27,6 +27,7 @@ setup(
     install_requires=[
         "click>=8.0.0",
         "filelock>=3.0.0",
+        "pyyaml>=6.0.0",
     ],
     extras_require={
         "dev": [
