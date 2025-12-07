@@ -1,8 +1,53 @@
+# Python
 __pycache__/
-*.pyc
-.DS_Store
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# NecroCode worktrees
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NecroCode specific
 worktrees/
 .kiro/registry/*.lock
 .kiro/current-task.md
+.kiro/logs/
+
+# Temporary files
+*.log
+*.tmp
