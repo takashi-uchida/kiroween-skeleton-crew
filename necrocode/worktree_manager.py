@@ -139,4 +139,3 @@ class WorktreeManager:
         )
         git_dir = Path(result.stdout.strip()).resolve()
         return git_dir.parent
->>>>>>> origin/main
