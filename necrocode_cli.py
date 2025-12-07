@@ -14,11 +14,19 @@ Provides commands to manage and orchestrate all NecroCode services:
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+
+try:
+    from necrocode.orchestration.service_manager import ServiceManager
+    from necrocode.orchestration.job_submitter import JobSubmitter
+except ImportError as import_error:
+    ServiceManager = None
+    JobSubmitter = None
+    _IMPORT_ERROR = import_error
+else:
+    _IMPORT_ERROR = None
 
 # Configure logging
 logging.basicConfig(
@@ -28,21 +36,41 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def require_orchestration_dependencies():
+    """Raise a helpful error if the orchestration modules failed to import."""
+    if _IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "NecroCode orchestration modules are unavailable. "
+            "Verify that the project dependencies are installed."
+        ) from _IMPORT_ERROR
+
+
+def resolve_path(path_str: str) -> Path:
+    """Expand and resolve CLI paths consistently."""
+    return Path(path_str).expanduser().resolve()
+
+
+def resolve_workspace_and_config(args):
+    """Return resolved workspace and config directories."""
+    workspace = resolve_path(args.workspace)
+    config_dir = resolve_path(args.config_dir)
+    return workspace, config_dir
+
+
 def setup_services_command(args):
     """Initialize all NecroCode services with default configuration."""
-    from necrocode.orchestration.service_manager import ServiceManager
+    require_orchestration_dependencies()
     
     print("🎃 Setting up NecroCode services...")
     
-    manager = ServiceManager(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    manager = ServiceManager(workspace_root=workspace, config_dir=config_dir)
     
     manager.setup_all_services()
     
     print("✅ All services configured successfully!")
-    print(f"\nConfiguration files created in: {args.config_dir}")
+    print(f"\nConfiguration files created in: {config_dir}")
     print("\nNext steps:")
     print("  1. Review and customize config files")
     print("  2. Run: necrocode start")
@@ -50,14 +78,13 @@ def setup_services_command(args):
 
 def start_command(args):
     """Start all NecroCode services."""
-    from necrocode.orchestration.service_manager import ServiceManager
+    require_orchestration_dependencies()
     
     print("🚀 Starting NecroCode services...")
     
-    manager = ServiceManager(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    manager = ServiceManager(workspace_root=workspace, config_dir=config_dir)
     
     services = args.services.split(',') if args.services else None
     
@@ -82,14 +109,13 @@ def start_command(args):
 
 def stop_command(args):
     """Stop all NecroCode services."""
-    from necrocode.orchestration.service_manager import ServiceManager
+    require_orchestration_dependencies()
     
     print("🛑 Stopping NecroCode services...")
     
-    manager = ServiceManager(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    manager = ServiceManager(workspace_root=workspace, config_dir=config_dir)
     
     services = args.services.split(',') if args.services else None
     
@@ -100,14 +126,17 @@ def stop_command(args):
 
 def status_command(args):
     """Show status of all NecroCode services."""
-    from necrocode.orchestration.service_manager import ServiceManager
+    require_orchestration_dependencies()
     
-    manager = ServiceManager(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    manager = ServiceManager(workspace_root=workspace, config_dir=config_dir)
     
     status = manager.get_status()
+    
+    if args.output_format == 'json':
+        print(json.dumps(status, indent=2))
+        return
     
     print("\n" + "=" * 60)
     print("NecroCode Services Status")
@@ -133,12 +162,11 @@ def status_command(args):
 
 def logs_command(args):
     """Show logs from NecroCode services."""
-    from necrocode.orchestration.service_manager import ServiceManager
+    require_orchestration_dependencies()
     
-    manager = ServiceManager(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    manager = ServiceManager(workspace_root=workspace, config_dir=config_dir)
     
     manager.show_logs(
         service=args.service,
@@ -149,21 +177,27 @@ def logs_command(args):
 
 def submit_command(args):
     """Submit a job description to NecroCode."""
-    from necrocode.orchestration.job_submitter import JobSubmitter
+    require_orchestration_dependencies()
     
-    print(f"📝 Submitting job: {args.description}")
+    workspace, config_dir = resolve_workspace_and_config(args)
     
-    submitter = JobSubmitter(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    submitter = JobSubmitter(workspace_root=workspace, config_dir=config_dir)
+    
+    if not args.description and not args.file:
+        message = "Provide a job description argument or use --file."
+        if hasattr(args, 'parser'):
+            args.parser.error(message)
+        raise ValueError(message)
     
     # Read job description from file or use argument
     if args.file:
-        with open(args.file, 'r') as f:
-            description = f.read()
+        description_path = resolve_path(args.file)
+        with description_path.open('r', encoding='utf-8') as file_handle:
+            description = file_handle.read()
+        print(f"📝 Submitting job from file: {description_path}")
     else:
         description = args.description
+        print(f"📝 Submitting job: {description}")
     
     job_id = submitter.submit_job(
         description=description,
@@ -178,14 +212,17 @@ def submit_command(args):
 
 def job_status_command(args):
     """Show status of a submitted job."""
-    from necrocode.orchestration.job_submitter import JobSubmitter
+    require_orchestration_dependencies()
     
-    submitter = JobSubmitter(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    submitter = JobSubmitter(workspace_root=workspace, config_dir=config_dir)
     
     status = submitter.get_job_status(args.job_id)
+    
+    if args.output_format == 'json':
+        print(json.dumps(status, indent=2))
+        return
     
     print("\n" + "=" * 60)
     print(f"Job Status: {args.job_id}")
@@ -217,14 +254,17 @@ def job_status_command(args):
 
 def list_jobs_command(args):
     """List all submitted jobs."""
-    from necrocode.orchestration.job_submitter import JobSubmitter
+    require_orchestration_dependencies()
     
-    submitter = JobSubmitter(
-        workspace_root=Path(args.workspace),
-        config_dir=Path(args.config_dir)
-    )
+    workspace, config_dir = resolve_workspace_and_config(args)
+    
+    submitter = JobSubmitter(workspace_root=workspace, config_dir=config_dir)
     
     jobs = submitter.list_jobs(limit=args.limit)
+    
+    if args.output_format == 'json':
+        print(json.dumps(jobs, indent=2))
+        return
     
     print("\n" + "=" * 60)
     print("Submitted Jobs")
@@ -321,6 +361,13 @@ Examples:
     
     # Status command
     status_parser = subparsers.add_parser('status', help='Show service status')
+    status_parser.add_argument(
+        '--format',
+        choices=['table', 'json'],
+        default='table',
+        dest='output_format',
+        help='Output format for service status (default: table)'
+    )
     status_parser.set_defaults(func=status_command)
     
     # Logs command
@@ -337,20 +384,35 @@ Examples:
     submit_parser.add_argument('--project', '-p', required=True, help='Project name')
     submit_parser.add_argument('--repo', '-r', help='Repository URL')
     submit_parser.add_argument('--base-branch', default='main', help='Base branch (default: main)')
-    submit_parser.set_defaults(func=submit_command)
+    submit_parser.set_defaults(func=submit_command, parser=submit_parser)
     
     # Job commands
     job_parser = subparsers.add_parser('job', help='Job management')
     job_subparsers = job_parser.add_subparsers(dest='job_command')
+    job_subparsers.required = True
     
     # Job status
     job_status_parser = job_subparsers.add_parser('status', help='Show job status')
     job_status_parser.add_argument('job_id', help='Job ID')
+    job_status_parser.add_argument(
+        '--format',
+        choices=['table', 'json'],
+        default='table',
+        dest='output_format',
+        help='Output format for job status (default: table)'
+    )
     job_status_parser.set_defaults(func=job_status_command)
     
     # Job list
     job_list_parser = job_subparsers.add_parser('list', help='List jobs')
     job_list_parser.add_argument('--limit', type=int, default=20, help='Number of jobs to show')
+    job_list_parser.add_argument(
+        '--format',
+        choices=['table', 'json'],
+        default='table',
+        dest='output_format',
+        help='Output format for job listing (default: table)'
+    )
     job_list_parser.set_defaults(func=list_jobs_command)
     
     # Parse arguments
