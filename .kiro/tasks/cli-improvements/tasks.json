@@ -1,0 +1,168 @@
+{
+  "project": "cli-improvements",
+  "description": "necrocode.cliの機能改善と使いやすさの向上",
+  "tasks": [
+    {
+      "id": "1",
+      "title": "LLMベースのTask Planner実装",
+      "description": "ジョブ記述から自動的にタスクを生成するLLM統合",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/task_planner.py",
+        "tests/test_task_planner.py"
+      ],
+      "acceptance_criteria": [
+        "自然言語のジョブ記述を受け取る",
+        "LLM（strandsagents）を使用してタスクに分解",
+        "依存関係を自動的に推論",
+        "tasks.jsonを生成",
+        "既存のplanコマンドと統合"
+      ]
+    },
+    {
+      "id": "2",
+      "title": "進捗表示の実装",
+      "description": "リアルタイムでタスク実行状況を表示",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/progress_monitor.py"
+      ],
+      "acceptance_criteria": [
+        "実行中のタスクをリアルタイム表示",
+        "完了/失敗/実行中の状態を色分け",
+        "進捗バーを表示",
+        "rich libraryを使用したTUI"
+      ]
+    },
+    {
+      "id": "3",
+      "title": "statusコマンドの実装",
+      "description": "タスクレジストリから実行状況を取得して表示",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [],
+      "acceptance_criteria": [
+        "プロジェクトごとのタスク状況を表示",
+        "完了率を計算",
+        "実行時間を表示",
+        "失敗したタスクの詳細を表示"
+      ]
+    },
+    {
+      "id": "4",
+      "title": "インタラクティブモードの追加",
+      "description": "対話的にタスクを選択・実行できるモード",
+      "dependencies": ["2"],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/interactive_mode.py"
+      ],
+      "acceptance_criteria": [
+        "タスク一覧を対話的に表示",
+        "実行するタスクを選択可能",
+        "依存関係を自動チェック",
+        "実行前に確認プロンプト"
+      ]
+    },
+    {
+      "id": "5",
+      "title": "エラーハンドリングとリトライ機能",
+      "description": "タスク失敗時の自動リトライとエラー詳細表示",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/error_handler.py"
+      ],
+      "acceptance_criteria": [
+        "タスク失敗時に詳細なエラーメッセージ",
+        "自動リトライ機能（--retry オプション）",
+        "失敗したタスクのログを保存",
+        "リカバリー手順を提案"
+      ]
+    },
+    {
+      "id": "6",
+      "title": "設定ファイルのサポート",
+      "description": ".necrocode.yamlで設定を管理",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/config_loader.py",
+        ".necrocode.yaml.example"
+      ],
+      "acceptance_criteria": [
+        "デフォルトのワーカー数を設定可能",
+        "Kiroモードのデフォルトを設定可能",
+        "カスタムworktreeディレクトリを指定可能",
+        "プロジェクトごとの設定をサポート"
+      ]
+    },
+    {
+      "id": "7",
+      "title": "GitHub PR自動作成",
+      "description": "完了したタスクのPRを自動作成",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/github_integration.py"
+      ],
+      "acceptance_criteria": [
+        "GitHub APIを使用してPR作成",
+        "タスク情報をPR説明に含める",
+        "レビュアーを自動アサイン",
+        "ラベルを自動付与",
+        "--no-pr オプションで無効化可能"
+      ]
+    },
+    {
+      "id": "8",
+      "title": "ドライランモード",
+      "description": "実際に実行せずに計画を確認",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [],
+      "acceptance_criteria": [
+        "--dry-run オプションを追加",
+        "実行されるタスクの順序を表示",
+        "依存関係グラフを表示",
+        "推定実行時間を表示"
+      ]
+    },
+    {
+      "id": "9",
+      "title": "ログとメトリクスの収集",
+      "description": "実行履歴とパフォーマンスメトリクスを記録",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/metrics_collector.py",
+        ".kiro/logs/README.md"
+      ],
+      "acceptance_criteria": [
+        "各タスクの実行時間を記録",
+        "成功/失敗率を追跡",
+        "ログファイルを.kiro/logs/に保存",
+        "metricsコマンドで統計を表示"
+      ]
+    },
+    {
+      "id": "10",
+      "title": "テンプレート機能",
+      "description": "よく使うタスク構成をテンプレート化",
+      "dependencies": [],
+      "type": "feature",
+      "files_to_create": [
+        "necrocode/template_manager.py",
+        ".kiro/templates/README.md"
+      ],
+      "acceptance_criteria": [
+        "タスク定義をテンプレートとして保存",
+        "テンプレートから新規プロジェクト作成",
+        "組み込みテンプレート（web-app, api, cli等）",
+        "カスタムテンプレートをサポート"
+      ]
+    }
+  ]
+}

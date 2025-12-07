@@ -7,21 +7,26 @@ import subprocess
 
 from necrocode.worktree_manager import WorktreeManager
 from necrocode.task_registry import TaskRegistry
+from necrocode.progress_monitor import ProgressMonitor
 
 
 class ParallelOrchestrator:
     """並列タスク実行の調整"""
     
-    def __init__(self, project_dir: Path, max_workers: int = 3, kiro_mode: str = "manual"):
+    def __init__(self, project_dir: Path, max_workers: int = 3, kiro_mode: str = "manual", show_progress: bool = True):
         self.project_dir = Path(project_dir)
         self.max_workers = max_workers
         self.kiro_mode = kiro_mode
+        self.show_progress = show_progress
         self.worktree_mgr = WorktreeManager(project_dir)
         self.task_registry = TaskRegistry(project_dir / ".kiro/registry")
     
     def execute_parallel(self, project_name: str):
         """依存関係を解決して並列実行"""
         tasks = self._load_tasks(project_name)
+        
+        if self.show_progress:
+            monitor = ProgressMonitor(len(tasks))
         
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             futures = {}
@@ -32,6 +37,9 @@ class ParallelOrchestrator:
                 
                 for task in ready_tasks:
                     if task["id"] not in futures and task["id"] not in completed_tasks:
+                        if self.show_progress:
+                            monitor.start_task(task["id"], task["title"])
+                        
                         future = executor.submit(
                             execute_task_in_worktree,
                             self.project_dir,
@@ -47,14 +55,26 @@ class ParallelOrchestrator:
                             result = future.result()
                             completed_tasks.add(task_id)
                             done_ids.append(task_id)
-                            print(f"✓ Task {task_id} completed: {result.get('pr_url', 'N/A')}")
+                            
+                            if self.show_progress:
+                                monitor.complete_task(task_id, success=True)
+                            else:
+                                print(f"✓ Task {task_id} completed: {result.get('pr_url', 'N/A')}")
+                        
                         except Exception as e:
-                            print(f"✗ Task {task_id} failed: {e}")
                             completed_tasks.add(task_id)
                             done_ids.append(task_id)
+                            
+                            if self.show_progress:
+                                monitor.complete_task(task_id, success=False)
+                            else:
+                                print(f"✗ Task {task_id} failed: {e}")
                 
                 for task_id in done_ids:
                     del futures[task_id]
+        
+        if self.show_progress:
+            monitor.summary()
     
     def _load_tasks(self, project_name: str) -> List[Dict]:
         """タスク定義を読み込み"""
@@ -91,26 +111,21 @@ def execute_task_in_worktree(project_dir: Path, task: Dict, kiro_mode: str = "ma
     
     try:
         # 1. Worktreeを作成
-        print(f"[Task {task_id}] Worktreeを作成中...")
         worktree_path = worktree_mgr.create_worktree(task_id, branch_name)
         
         # 2. タスクコンテキストを書き込み
-        print(f"[Task {task_id}] タスクコンテキストを生成中...")
         context_gen.generate(worktree_path, task)
         
         # 3. Kiroを呼び出し
-        print(f"[Task {task_id}] Kiroを実行中...")
         kiro_result = kiro.invoke(worktree_path, task, mode=kiro_mode)
         
         if not kiro_result.get("success"):
             raise RuntimeError(f"Kiro execution failed: {kiro_result.get('stderr', 'Unknown error')}")
         
         # 4. 変更をコミット
-        print(f"[Task {task_id}] 変更をコミット中...")
         _commit_changes(worktree_path, task)
         
         # 5. ブランチをプッシュ（オプション）
-        # print(f"[Task {task_id}] ブランチをプッシュ中...")
         # _push_branch(worktree_path, branch_name)
         
         # 6. PRを作成（スタブ）
@@ -125,7 +140,6 @@ def execute_task_in_worktree(project_dir: Path, task: Dict, kiro_mode: str = "ma
         }
     
     except Exception as e:
-        print(f"[Task {task_id}] エラー: {e}")
         raise
     
     finally:
@@ -136,7 +150,6 @@ def execute_task_in_worktree(project_dir: Path, task: Dict, kiro_mode: str = "ma
 
 def _commit_changes(worktree_path: Path, task: Dict):
     """変更をコミット"""
-    # 変更があるか確認
     status = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=worktree_path,
@@ -146,7 +159,6 @@ def _commit_changes(worktree_path: Path, task: Dict):
     )
     
     if not status.stdout.strip():
-        print(f"  変更なし、コミットをスキップ")
         return
     
     subprocess.run(["git", "add", "."], cwd=worktree_path, check=True)

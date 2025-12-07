@@ -1,0 +1,73 @@
+{
+  "project": "directory-cleanup",
+  "description": "プロジェクトのディレクトリ構成を整理し、不要なファイルを削除",
+  "tasks": [
+    {
+      "id": "1",
+      "title": "examples/ディレクトリの整理",
+      "description": "古いexampleファイルを削除し、必要なものだけを残す",
+      "dependencies": [],
+      "type": "cleanup",
+      "files_to_create": [],
+      "acceptance_criteria": [
+        "parallel_execution_demo.pyは残す",
+        "worktree関連のexampleは残す",
+        "古いデモファイル（demo_*.py）は削除",
+        "workspace1, workspace2は削除"
+      ]
+    },
+    {
+      "id": "2",
+      "title": "tests/ディレクトリの整理",
+      "description": "新アーキテクチャに関連するテストのみを残す",
+      "dependencies": [],
+      "type": "cleanup",
+      "files_to_create": [],
+      "acceptance_criteria": [
+        "test_worktree_manager.pyは残す",
+        "test_integration.pyは残す",
+        "旧アーキテクチャのテストは削除",
+        "test_ai_*.py, test_documentation_*.pyは削除"
+      ]
+    },
+    {
+      "id": "3",
+      "title": "config/ディレクトリの整理",
+      "description": "新アーキテクチャに必要な設定ファイルのみを残す",
+      "dependencies": [],
+      "type": "cleanup",
+      "files_to_create": [],
+      "acceptance_criteria": [
+        "config.yamlは残す",
+        "dispatcher.yaml, agent-pools.yamlは削除（旧アーキテクチャ）"
+      ]
+    },
+    {
+      "id": "4",
+      "title": "scripts/ディレクトリの確認",
+      "description": "スクリプトディレクトリの内容を確認し、不要なものを削除",
+      "dependencies": [],
+      "type": "cleanup",
+      "files_to_create": [],
+      "acceptance_criteria": [
+        "新アーキテクチャに関連するスクリプトのみ残す",
+        "古いドキュメント生成スクリプトは削除"
+      ]
+    },
+    {
+      "id": "5",
+      "title": "ディレクトリ構成ドキュメントの作成",
+      "description": "整理後のディレクトリ構成を説明するドキュメントを作成",
+      "dependencies": ["1", "2", "3", "4"],
+      "type": "documentation",
+      "files_to_create": [
+        "DIRECTORY_STRUCTURE.md"
+      ],
+      "acceptance_criteria": [
+        "各ディレクトリの役割が明確に記載されている",
+        "新アーキテクチャの構成が反映されている",
+        "不要なディレクトリへの言及がない"
+      ]
+    }
+  ]
+}
