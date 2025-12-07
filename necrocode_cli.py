@@ -35,6 +35,25 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+SERVICE_STATE_ICONS = {
+    True: "🟢",
+    False: "🔴"
+}
+
+TASK_STATE_ICONS = {
+    'DONE': '✅',
+    'RUNNING': '🔄',
+    'FAILED': '❌',
+    'PENDING': '⏳'
+}
+
+JOB_STATUS_ICONS = {
+    'completed': '✅',
+    'running': '🔄',
+    'failed': '❌',
+    'pending': '⏳'
+}
+
 
 def require_orchestration_dependencies():
     """Raise a helpful error if the orchestration modules failed to import."""
@@ -54,7 +73,15 @@ def resolve_workspace_and_config(args):
     """Return resolved workspace and config directories."""
     workspace = resolve_path(args.workspace)
     config_dir = resolve_path(args.config_dir)
+
+    workspace.mkdir(parents=True, exist_ok=True)
+    config_dir.mkdir(parents=True, exist_ok=True)
     return workspace, config_dir
+
+
+def get_status_icon(state, mapping, default_icon='⏳'):
+    """Return a unified status icon for different entity types."""
+    return mapping.get(state, default_icon)
 
 
 def setup_services_command(args):
@@ -143,7 +170,7 @@ def status_command(args):
     print("=" * 60)
     
     for service_name, service_status in status.items():
-        status_icon = "🟢" if service_status['running'] else "🔴"
+        status_icon = get_status_icon(service_status['running'], SERVICE_STATE_ICONS, '🔴')
         print(f"\n{status_icon} {service_name.upper()}")
         print(f"   Status: {'Running' if service_status['running'] else 'Stopped'}")
         
@@ -192,8 +219,14 @@ def submit_command(args):
     # Read job description from file or use argument
     if args.file:
         description_path = resolve_path(args.file)
-        with description_path.open('r', encoding='utf-8') as file_handle:
-            description = file_handle.read()
+        try:
+            with description_path.open('r', encoding='utf-8') as file_handle:
+                description = file_handle.read()
+        except (OSError, UnicodeDecodeError) as exc:
+            message = f"Failed to read job description from {description_path}: {exc}"
+            if hasattr(args, 'parser'):
+                args.parser.error(message)
+            raise
         print(f"📝 Submitting job from file: {description_path}")
     else:
         description = args.description
@@ -235,13 +268,7 @@ def job_status_command(args):
         print(f"\nTasks: {status['tasks_completed']}/{status['tasks_total']}")
         
         for task in status['tasks'][:10]:  # Show first 10 tasks
-            status_icon = {
-                'DONE': '✅',
-                'RUNNING': '🔄',
-                'FAILED': '❌',
-                'PENDING': '⏳'
-            }.get(task['state'], '⏳')
-            
+            status_icon = get_status_icon(task['state'], TASK_STATE_ICONS)
             print(f"  {status_icon} {task['id']}: {task['title']}")
     
     if status.get('prs'):
@@ -261,6 +288,11 @@ def list_jobs_command(args):
     submitter = JobSubmitter(workspace_root=workspace, config_dir=config_dir)
     
     jobs = submitter.list_jobs(limit=args.limit)
+
+    if args.project:
+        jobs = [job for job in jobs if job.get('project_name') == args.project]
+    if args.status:
+        jobs = [job for job in jobs if job.get('status') == args.status]
     
     if args.output_format == 'json':
         print(json.dumps(jobs, indent=2))
@@ -270,13 +302,13 @@ def list_jobs_command(args):
     print("Submitted Jobs")
     print("=" * 60)
     
+    if not jobs:
+        print("\nNo jobs found for the given filters.")
+        print("\n" + "=" * 60)
+        return
+
     for job in jobs:
-        status_icon = {
-            'completed': '✅',
-            'running': '🔄',
-            'failed': '❌',
-            'pending': '⏳'
-        }.get(job['status'], '⏳')
+        status_icon = get_status_icon(job.get('status'), JOB_STATUS_ICONS)
         
         print(f"\n{status_icon} {job['job_id']}")
         print(f"   Project: {job['project_name']}")
@@ -406,6 +438,12 @@ Examples:
     # Job list
     job_list_parser = job_subparsers.add_parser('list', help='List jobs')
     job_list_parser.add_argument('--limit', type=int, default=20, help='Number of jobs to show')
+    job_list_parser.add_argument('--project', help='Filter jobs by project name')
+    job_list_parser.add_argument(
+        '--status',
+        choices=['pending', 'running', 'completed', 'failed'],
+        help='Filter jobs by job status'
+    )
     job_list_parser.add_argument(
         '--format',
         choices=['table', 'json'],
