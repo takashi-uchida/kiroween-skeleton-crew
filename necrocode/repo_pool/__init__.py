@@ -26,7 +26,10 @@ from necrocode.repo_pool.slot_store import SlotStore
 from necrocode.repo_pool.lock_manager import LockManager
 from necrocode.repo_pool.slot_cleaner import SlotCleaner, CleanupRecord, RepairResult
 from necrocode.repo_pool.slot_allocator import SlotAllocator
-from necrocode.repo_pool.pool_manager import PoolManager
+# Use WorktreePoolManager as the default PoolManager
+from necrocode.repo_pool.worktree_pool_manager import WorktreePoolManager as PoolManager
+# Keep old implementation available for backward compatibility
+from necrocode.repo_pool.pool_manager import PoolManager as CloneBasedPoolManager
 
 __all__ = [
     # Models
@@ -61,6 +64,7 @@ __all__ = [
     "RepairResult",
     # Slot Allocator
     "SlotAllocator",
-    # Pool Manager (Main API)
+    # Pool Manager (Main API - now using WorktreePoolManager)
     "PoolManager",
+    "CloneBasedPoolManager",  # Old implementation for backward compatibility
 ]

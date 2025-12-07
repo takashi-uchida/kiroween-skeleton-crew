@@ -1,43 +1,43 @@
-# NecroCode v2: Kiro-Native Architecture
+# NecroCode v2: Kiroネイティブアーキテクチャ
 
-## Core Insight
-**Kiro IS the agent.** We don't need to simulate multiple agents - we need to orchestrate Kiro instances working on different branches.
+## コアインサイト
+**Kiroがエージェントそのものです。** 複数のエージェントをシミュレートする必要はありません - 異なるブランチで動作するKiroインスタンスをオーケストレートする必要があります。
 
-## Architecture Overview
+## アーキテクチャ概要
 
 ```
-User Input: "Create a chat app"
+ユーザー入力: "チャットアプリを作成"
      ↓
-[Task Planner] - Breaks down into tasks
+[Task Planner] - タスクに分解
      ↓
-[Task Queue] - Stores tasks with metadata
+[Task Queue] - メタデータ付きでタスクを保存
      ↓
-[Kiro Orchestrator] - Executes tasks SEQUENTIALLY
+[Kiro Orchestrator] - タスクを順次実行
      ↓
-For Each Task (in dependency order):
-  1. Checkout new branch
-  2. Write task context to .kiro/current-task.md
-  3. Trigger Kiro Hook (or manual execution)
-  4. Kiro implements solution
-  5. Commit changes
-  6. Create PR
-  7. Move to next task
+各タスク（依存関係順）：
+  1. 新しいブランチをチェックアウト
+  2. タスクコンテキストを.kiro/current-task.mdに書き込み
+  3. Kiro Hookをトリガー（または手動実行）
+  4. Kiroがソリューションを実装
+  5. 変更をコミット
+  6. PRを作成
+  7. 次のタスクに移動
 ```
 
-**Note**: Parallel execution is NOT feasible with current Kiro architecture.
-Tasks are executed sequentially, respecting dependencies.
+**注意**: 現在のKiroアーキテクチャでは並列実行は実現不可能です。
+タスクは依存関係を尊重して順次実行されます。
 
-## Key Components
+## 主要コンポーネント
 
 ### 1. Task Planner (Python)
-**Purpose**: Convert job description into structured tasks
+**目的**: ジョブ記述を構造化されたタスクに変換
 
 ```python
 class TaskPlanner:
     def plan(self, job_description: str) -> List[Task]:
         """
-        Uses Kiro to analyze job description and create task breakdown
-        Returns structured task list with:
+        Kiroを使用してジョブ記述を分析し、タスク分解を作成
+        以下を含む構造化されたタスクリストを返す：
         - task_id
         - title
         - description
@@ -47,7 +47,7 @@ class TaskPlanner:
         """
 ```
 
-**Output Format** (`.kiro/tasks/{project}/tasks.json`):
+**出力形式** (`.kiro/tasks/{project}/tasks.json`):
 ```json
 {
   "project": "chat-app",
@@ -77,27 +77,27 @@ class TaskPlanner:
 ```
 
 ### 2. Kiro Orchestrator (Python)
-**Purpose**: Manage parallel Kiro sessions
+**目的**: 並列Kiroセッションを管理
 
 ```python
 class KiroOrchestrator:
     def execute_tasks(self, project: str):
         """
-        1. Load tasks from .kiro/tasks/{project}/tasks.json
-        2. Resolve dependencies (topological sort)
-        3. For each ready task:
-           - Create branch: feature/task-{id}-{slug}
-           - Write task context to .kiro/current-task.md
-           - Invoke Kiro via CLI/API
-           - Monitor completion
-           - Create PR via GitHub API
+        1. .kiro/tasks/{project}/tasks.jsonからタスクを読み込み
+        2. 依存関係を解決（トポロジカルソート）
+        3. 各準備完了タスクに対して：
+           - ブランチを作成: feature/task-{id}-{slug}
+           - タスクコンテキストを.kiro/current-task.mdに書き込み
+           - CLI/API経由でKiroを呼び出し
+           - 完了を監視
+           - GitHub API経由でPRを作成
         """
 ```
 
 ### 3. Task Context File
-**Purpose**: Give Kiro all context needed for a task
+**目的**: タスクに必要な全てのコンテキストをKiroに提供
 
-**Location**: `.kiro/current-task.md` (temporary, per session)
+**場所**: `.kiro/current-task.md` (一時的、セッションごと)
 
 ```markdown
 # Task: Implement JWT Authentication
@@ -134,152 +134,152 @@ Add login and register endpoints with JWT token generation and validation.
 #[[file:package.json]]
 ```
 
-### 4. Kiro Hook: Auto-Execute Task
-**Purpose**: Trigger Kiro when task context is written
+### 4. Kiro Hook: タスク自動実行
+**目的**: タスクコンテキストが書き込まれた時にKiroをトリガー
 
-**Location**: `.kiro/hooks/on_task_ready.py`
+**場所**: `.kiro/hooks/on_task_ready.py`
 
 ```python
-# Trigger: When .kiro/current-task.md is created/updated
-# Action: Execute task implementation
+# トリガー: .kiro/current-task.mdが作成/更新された時
+# アクション: タスク実装を実行
 
 def on_task_ready(context):
     task_file = Path(".kiro/current-task.md")
     if task_file.exists():
-        # Kiro reads the task context
-        # Implements the solution
-        # Commits with format: "feat(task-{id}): {title}"
-        # Marks task as complete
+        # Kiroがタスクコンテキストを読み取る
+        # ソリューションを実装
+        # "feat(task-{id}): {title}"形式でコミット
+        # タスクを完了としてマーク
         pass
 ```
 
-### 5. GitHub Integration
-**Purpose**: Create PRs automatically
+### 5. GitHub統合
+**目的**: PRを自動作成
 
 ```python
 class GitHubIntegration:
     def create_pr(self, branch: str, task: Task):
         """
-        Creates PR with:
-        - Title: "Task {id}: {title}"
-        - Body: Task description + acceptance criteria
-        - Labels: task.type (backend/frontend/etc)
-        - Reviewers: (optional)
+        以下を含むPRを作成：
+        - タイトル: "Task {id}: {title}"
+        - 本文: タスク説明 + 受け入れ基準
+        - ラベル: task.type (backend/frontend/etc)
+        - レビュアー: (オプション)
         """
 ```
 
-## Workflow Example
+## ワークフロー例
 
-### Step 1: User Input
+### ステップ1: ユーザー入力
 ```bash
-python necrocode.py "Create a real-time chat app with authentication"
+python necrocode.py "認証機能付きのリアルタイムチャットアプリを作成"
 ```
 
-### Step 2: Task Planning
+### ステップ2: タスク計画
 ```
-[Task Planner] Analyzing requirements...
-Created 8 tasks:
-  1. Database schema (backend)
-  2. JWT authentication (backend)
-  3. WebSocket server (backend)
-  4. Login UI (frontend)
-  5. Chat interface (frontend)
-  6. Message persistence (backend)
-  7. User presence (backend)
-  8. Integration tests (qa)
+[Task Planner] 要件を分析中...
+8個のタスクを作成：
+  1. データベーススキーマ (backend)
+  2. JWT認証 (backend)
+  3. WebSocketサーバー (backend)
+  4. ログインUI (frontend)
+  5. チャットインターフェース (frontend)
+  6. メッセージ永続化 (backend)
+  7. ユーザープレゼンス (backend)
+  8. 統合テスト (qa)
 ```
 
-### Step 3: Sequential Execution
+### ステップ3: 順次実行
 ```
-[Orchestrator] Starting task execution...
+[Orchestrator] タスク実行を開始...
 
-Task 1:
-  ✓ Branch created: feature/task-1-database-schema
-  ✓ Task context written to .kiro/current-task.md
-  ✓ Kiro Hook triggered (or manual: "Kiro, implement current task")
-  ✓ Files created: models/User.js, models/Message.js
-  ✓ Committed: feat(task-1): setup database schema
-  ✓ PR created: #101
-  ✓ Merged to main
+タスク1:
+  ✓ ブランチ作成: feature/task-1-database-schema
+  ✓ タスクコンテキストを.kiro/current-task.mdに書き込み
+  ✓ Kiro Hookトリガー（または手動: "Kiro、現在のタスクを実装して"）
+  ✓ ファイル作成: models/User.js, models/Message.js
+  ✓ コミット: feat(task-1): setup database schema
+  ✓ PR作成: #101
+  ✓ mainにマージ
 
-Task 2 (depends on Task 1):
-  ✓ Branch created: feature/task-2-jwt-auth
-  ✓ Task context written (includes Task 1 results)
-  ✓ Kiro implements...
-  ✓ Committed: feat(task-2): implement JWT authentication
-  ✓ PR created: #102
+タスク2（タスク1に依存）:
+  ✓ ブランチ作成: feature/task-2-jwt-auth
+  ✓ タスクコンテキスト書き込み（タスク1の結果を含む）
+  ✓ Kiroが実装...
+  ✓ コミット: feat(task-2): implement JWT authentication
+  ✓ PR作成: #102
   ...
 ```
 
-## Key Differences from Old Architecture
+## 旧アーキテクチャとの主な違い
 
-### Old (Spirit-based)
-- ❌ Abstract "spirits" that don't map to real capabilities
-- ❌ Complex inter-spirit communication
-- ❌ Simulated parallelism
-- ❌ No clear execution model
+### 旧（スピリットベース）
+- ❌ 実際の機能にマッピングされない抽象的な「スピリット」
+- ❌ 複雑なスピリット間通信
+- ❌ シミュレートされた並列処理
+- ❌ 明確な実行モデルがない
 
-### New (Kiro-native)
-- ✅ Kiro is the agent (real, not simulated)
-- ✅ Simple task queue with dependencies
-- ✅ Sequential execution (realistic for single Kiro instance)
-- ✅ Clear execution: 1 task = 1 branch = 1 PR
-- ✅ Leverages Kiro's actual strengths (code generation, file manipulation)
-- ✅ Can be semi-automated with Hooks or fully manual
+### 新（Kiroネイティブ）
+- ✅ Kiroがエージェント（シミュレートではなく実在）
+- ✅ 依存関係を持つシンプルなタスクキュー
+- ✅ 順次実行（単一Kiroインスタンスに現実的）
+- ✅ 明確な実行：1タスク = 1ブランチ = 1 PR
+- ✅ Kiroの実際の強み（コード生成、ファイル操作）を活用
+- ✅ Hooksで半自動化、または完全手動が可能
 
-## Implementation Priority
+## 実装優先順位
 
-1. **Task Planner** - Convert job description to tasks.json
-2. **Task Context Generator** - Create .kiro/current-task.md
-3. **Manual Execution** - User runs Kiro with task context
-4. **Git Automation** - Auto-create branches and commits
-5. **GitHub Integration** - Auto-create PRs
-6. **Orchestrator** - Sequential task execution with Hooks
+1. **Task Planner** - ジョブ記述をtasks.jsonに変換
+2. **Task Context Generator** - .kiro/current-task.mdを作成
+3. **Manual Execution** - ユーザーがタスクコンテキストでKiroを実行
+4. **Git Automation** - ブランチとコミットを自動作成
+5. **GitHub Integration** - PRを自動作成
+6. **Orchestrator** - Hooksを使用した順次タスク実行
 
-## Execution Modes
+## 実行モード
 
-### Mode 1: Fully Manual
+### モード1: 完全手動
 ```bash
-python necrocode.py plan "Create chat app"  # Creates tasks.json
-python necrocode.py next                     # Writes current-task.md
-# User: "Kiro, implement the current task"
-python necrocode.py complete                 # Commits & creates PR
-python necrocode.py next                     # Next task
+python necrocode.py plan "チャットアプリを作成"  # tasks.jsonを作成
+python necrocode.py next                         # current-task.mdを書き込み
+# ユーザー: "Kiro、現在のタスクを実装して"
+python necrocode.py complete                     # コミット & PRを作成
+python necrocode.py next                         # 次のタスク
 ```
 
-### Mode 2: Semi-Automated (Hooks)
+### モード2: 半自動（Hooks）
 ```bash
-python necrocode.py plan "Create chat app"
-python necrocode.py start                    # Starts orchestrator
-# Orchestrator writes task context
-# Kiro Hook triggers automatically
-# User reviews and approves
-# Moves to next task
+python necrocode.py plan "チャットアプリを作成"
+python necrocode.py start                        # オーケストレーターを起動
+# オーケストレーターがタスクコンテキストを書き込み
+# Kiro Hookが自動的にトリガー
+# ユーザーがレビューして承認
+# 次のタスクに移動
 ```
 
-### Mode 3: Batch Mode (Future)
+### モード3: バッチモード（将来）
 ```bash
-python necrocode.py batch "Create chat app"
-# Executes all tasks overnight
-# Creates multiple PRs
-# User reviews in the morning
+python necrocode.py batch "チャットアプリを作成"
+# 夜間に全タスクを実行
+# 複数のPRを作成
+# 朝にユーザーがレビュー
 ```
 
-## References
+## 参考資料
 
 ### Claude Agent Skills
-- Use structured task definitions
-- Clear acceptance criteria
-- File-level context
+- 構造化されたタスク定義を使用
+- 明確な受け入れ基準
+- ファイルレベルのコンテキスト
 
-### cc-sdd Pattern
-- Specification-driven development
-- Task breakdown with dependencies
-- Automated execution
+### cc-sddパターン
+- 仕様駆動開発
+- 依存関係を持つタスク分解
+- 自動化された実行
 
-### Kiro Features to Leverage
-- Specs for task definitions
-- Hooks for automation
-- File context (#[[file:...]])
-- Git operations
-- Diagnostic tools
+### 活用すべきKiro機能
+- タスク定義用のSpecs
+- 自動化用のHooks
+- ファイルコンテキスト（#[[file:...]]）
+- Git操作
+- 診断ツール

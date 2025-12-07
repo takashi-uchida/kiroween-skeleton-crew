@@ -1,44 +1,44 @@
 # Review & PR Service
 
-Review & PR Service is a component of the NecroCode system that automates Pull Request creation, management, and lifecycle handling. It integrates with multiple Git hosting platforms (GitHub, GitLab, Bitbucket) and provides comprehensive PR automation capabilities.
+Review & PR Serviceは、プルリクエストの作成、管理、ライフサイクル処理を自動化するNecroCodeシステムのコンポーネントです。複数のGitホスティングプラットフォーム（GitHub、GitLab、Bitbucket）と統合し、包括的なPR自動化機能を提供します。
 
-## Table of Contents
+## 目次
 
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Architecture](#architecture)
-- [Components](#components)
-- [Configuration](#configuration)
-- [API Reference](#api-reference)
-- [Examples](#examples)
-- [Webhook Integration](#webhook-integration)
-- [Testing](#testing)
-- [Development Status](#development-status)
+- [機能](#機能)
+- [インストール](#インストール)
+- [クイックスタート](#クイックスタート)
+- [アーキテクチャ](#アーキテクチャ)
+- [コンポーネント](#コンポーネント)
+- [設定](#設定)
+- [APIリファレンス](#APIリファレンス)
+- [使用例](#使用例)
+- [Webhook統合](#Webhook統合)
+- [テスト](#テスト)
+- [開発ステータス](#開発ステータス)
 
-## Installation
+## インストール
 
-### Requirements
+### 要件
 
 - Python 3.11+
 - Git
-- Access to GitHub, GitLab, or Bitbucket API
+- GitHub、GitLab、またはBitbucket APIへのアクセス
 
-### Install Dependencies
+### 依存関係のインストール
 
 ```bash
 pip install PyGithub python-gitlab atlassian-python-api jinja2 PyYAML aiohttp
 ```
 
-Or install from requirements file:
+または、requirementsファイルからインストール：
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Environment Setup
+### 環境設定
 
-Set up your Git host credentials:
+Gitホストの認証情報を設定：
 
 ```bash
 # For GitHub
@@ -51,26 +51,26 @@ export GITLAB_TOKEN="glpat-xxxxx"
 export BITBUCKET_TOKEN="xxxxx"
 ```
 
-## Quick Start
+## クイックスタート
 
-### Basic Usage
+### 基本的な使用方法
 
 ```python
 from necrocode.review_pr_service import PRService, PRServiceConfig, GitHostType
 from necrocode.task_registry.models import Task, TaskState
 from datetime import datetime
 
-# Configure the service
+# サービスを設定
 config = PRServiceConfig(
     git_host_type=GitHostType.GITHUB,
     repository="owner/repo",
     api_token="your-github-token"
 )
 
-# Initialize service
+# サービスを初期化
 pr_service = PRService(config)
 
-# Create a task
+# タスクを作成
 task = Task(
     id="1.1",
     title="Implement user authentication",
@@ -80,7 +80,7 @@ task = Task(
     updated_at=datetime.now()
 )
 
-# Create PR
+# PRを作成
 pr = pr_service.create_pr(
     task=task,
     branch_name="feature/task-1.1-auth",
@@ -93,11 +93,9 @@ pr = pr_service.create_pr(
 print(f"Created PR #{pr.pr_number}: {pr.url}")
 ```
 
-Review & PR Service is a component of the NecroCode system that automates Pull Request creation, management, and lifecycle handling. It integrates with multiple Git hosting platforms (GitHub, GitLab, Bitbucket) and provides comprehensive PR automation capabilities.
+## 機能
 
-## Features
-
-- **Automatic PR Creation**: Creates PRs from Agent Runner artifacts with generated descriptions
+- **自動PR作成**: Agent Runnerアーティファクトから生成された説明でPRを作成
 - **Multi-Platform Support**: Works with GitHub, GitLab, and Bitbucket
 - **Template Engine**: Generates PR descriptions using customizable Jinja2 templates
 - **CI Integration**: Monitors CI status and updates Task Registry accordingly

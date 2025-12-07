@@ -1,72 +1,72 @@
-# Error Handling and Recovery Guide
+# エラーハンドリングとリカバリーガイド
 
-This guide explains the error handling and recovery features in the Repo Pool Manager.
+このガイドでは、Repo Pool Managerのエラーハンドリングとリカバリー機能について説明します。
 
-## Overview
+## 概要
 
-The Repo Pool Manager includes comprehensive error detection and automatic recovery capabilities to maintain system health and prevent issues from affecting agent operations.
+Repo Pool Managerには、システムの健全性を維持し、問題がエージェント操作に影響を与えないようにするための包括的なエラー検出と自動リカバリー機能が含まれています。
 
-## Anomaly Detection
+## 異常検出
 
-### Types of Anomalies
+### 異常のタイプ
 
-The system can detect three types of anomalies:
+システムは3種類の異常を検出できます：
 
-#### 1. Long-Allocated Slots
+#### 1. 長時間割り当てられたスロット
 
-Slots that have been in the `ALLOCATED` state for an unusually long time may indicate:
-- Crashed agent processes
-- Forgotten allocations
-- Deadlocks or hung processes
+異常に長い時間`ALLOCATED`状態にあるスロットは、以下を示す可能性があります：
+- クラッシュしたエージェントプロセス
+- 忘れられた割り当て
+- デッドロックまたはハングしたプロセス
 
-**Detection Method:**
+**検出方法:**
 ```python
 long_allocated = manager.detect_long_allocated_slots(max_allocation_hours=24)
 ```
 
-**Default Threshold:** 24 hours
+**デフォルトしきい値:** 24時間
 
-#### 2. Corrupted Slots
+#### 2. 破損したスロット
 
-Slots with integrity issues such as:
-- Missing directories
-- Corrupted git repositories
-- Invalid metadata
-- Broken `.git` directories
+以下のような整合性の問題があるスロット：
+- ディレクトリの欠落
+- 破損したgitリポジトリ
+- 無効なメタデータ
+- 壊れた`.git`ディレクトリ
 
-**Detection Method:**
+**検出方法:**
 ```python
 corrupted = manager.detect_corrupted_slots()
 ```
 
-**Verification Checks:**
-- Slot directory exists
-- `.git` directory exists and is valid
-- Can retrieve current branch and commit
-- Git repository is not corrupted
+**検証チェック:**
+- スロットディレクトリが存在する
+- `.git`ディレクトリが存在し有効である
+- 現在のブランチとコミットを取得できる
+- Gitリポジトリが破損していない
 
-#### 3. Orphaned Locks
+#### 3. 孤立したロック
 
-Lock files that:
-- Don't correspond to any existing slot
-- Are stale (older than configured threshold)
-- Were left behind by crashed processes
+以下のようなロックファイル：
+- 既存のスロットに対応していない
+- 古い（設定されたしきい値より古い）
+- クラッシュしたプロセスによって残された
 
-**Detection Method:**
+**検出方法:**
 ```python
 orphaned = manager.detect_orphaned_locks()
 ```
 
-**Default Threshold:** 24 hours (configurable via `stale_lock_hours`)
+**デフォルトしきい値:** 24時間（`stale_lock_hours`で設定可能）
 
-### Comprehensive Anomaly Detection
+### 包括的な異常検出
 
-Run all detection methods at once:
+すべての検出方法を一度に実行：
 
 ```python
 anomalies = manager.detect_anomalies(max_allocation_hours=24)
 
-# Returns dictionary with:
+# 以下を含む辞書を返します:
 # {
 #     "long_allocated_slots": [Slot, ...],
 #     "corrupted_slots": [Slot, ...],
@@ -74,141 +74,141 @@ anomalies = manager.detect_anomalies(max_allocation_hours=24)
 # }
 ```
 
-## Manual Recovery
+## 手動リカバリー
 
-### Recovering a Single Slot
+### 単一スロットのリカバリー
 
-Attempt to recover a corrupted or error-state slot:
+破損またはエラー状態のスロットをリカバリーしようとします：
 
 ```python
-# Basic recovery
+# 基本的なリカバリー
 success = manager.recover_slot(slot_id, force=False)
 
-# Force recovery (marks as available even if repair fails)
+# 強制リカバリー（修復が失敗しても利用可能としてマーク）
 success = manager.recover_slot(slot_id, force=True)
 ```
 
-**Recovery Process:**
-1. Verify slot integrity
-2. If corrupted, attempt repair:
-   - Run `git fsck` to check for corruption
-   - Attempt cleanup to restore working state
-   - If repair fails, delete and re-clone repository
-3. Update slot state to `AVAILABLE`
+**リカバリープロセス:**
+1. スロットの整合性を検証
+2. 破損している場合、修復を試みる：
+   - `git fsck`を実行して破損をチェック
+   - クリーンアップを試みて作業状態を復元
+   - 修復が失敗した場合、リポジトリを削除して再クローン
+3. スロット状態を`AVAILABLE`に更新
 
-### Isolating a Problematic Slot
+### 問題のあるスロットの隔離
 
-Mark a slot as `ERROR` to prevent allocation:
+スロットを`ERROR`としてマークして割り当てを防止：
 
 ```python
 manager.isolate_slot(slot_id)
 ```
 
-**Effects:**
-- Slot state set to `ERROR`
-- Metadata added with isolation timestamp and reason
-- Slot will not be allocated until manually recovered
-- Requires manual intervention to restore
+**効果:**
+- スロット状態が`ERROR`に設定される
+- 隔離タイムスタンプと理由がメタデータに追加される
+- 手動でリカバリーされるまでスロットは割り当てられない
+- 復元には手動介入が必要
 
-**Use Cases:**
-- Persistent corruption that can't be auto-recovered
-- Slots requiring manual inspection
-- Temporary removal from pool without deletion
+**使用例:**
+- 自動リカバリーできない永続的な破損
+- 手動検査が必要なスロット
+- 削除せずにプールから一時的に削除
 
-## Automatic Recovery
+## 自動リカバリー
 
-### Basic Auto-Recovery
+### 基本的な自動リカバリー
 
-Run automatic recovery with default settings:
+デフォルト設定で自動リカバリーを実行：
 
 ```python
 results = manager.auto_recover()
 ```
 
-### Advanced Auto-Recovery
+### 高度な自動リカバリー
 
-Customize recovery behavior:
+リカバリー動作をカスタマイズ：
 
 ```python
 results = manager.auto_recover(
-    max_allocation_hours=24,           # Threshold for long allocations
-    recover_corrupted=True,            # Attempt to recover corrupted slots
-    cleanup_orphaned_locks=True,       # Clean up orphaned lock files
-    force_release_long_allocated=False # Force-release long-allocated slots
+    max_allocation_hours=24,           # 長時間割り当てのしきい値
+    recover_corrupted=True,            # 破損したスロットのリカバリーを試みる
+    cleanup_orphaned_locks=True,       # 孤立したロックファイルをクリーンアップ
+    force_release_long_allocated=False # 長時間割り当てられたスロットを強制解放
 )
 ```
 
-**Parameters:**
+**パラメータ:**
 
-- `max_allocation_hours` (default: 24)
-  - Maximum time a slot can be allocated before considered anomalous
+- `max_allocation_hours`（デフォルト: 24）
+  - スロットが異常と見なされるまでの最大割り当て時間
   
-- `recover_corrupted` (default: True)
-  - Whether to attempt recovery of corrupted slots
-  - Failed recoveries result in slot isolation
+- `recover_corrupted`（デフォルト: True）
+  - 破損したスロットのリカバリーを試みるかどうか
+  - リカバリーに失敗するとスロットが隔離される
   
-- `cleanup_orphaned_locks` (default: True)
-  - Whether to remove orphaned lock files
-  - Safe to enable as orphaned locks are verified
+- `cleanup_orphaned_locks`（デフォルト: True）
+  - 孤立したロックファイルを削除するかどうか
+  - 孤立したロックは検証されるため、有効にしても安全
   
-- `force_release_long_allocated` (default: False)
-  - Whether to force-release long-allocated slots
-  - **WARNING:** May interrupt active agent processes
-  - Use with caution in production
+- `force_release_long_allocated`（デフォルト: False）
+  - 長時間割り当てられたスロットを強制解放するかどうか
+  - **警告:** アクティブなエージェントプロセスを中断する可能性があります
+  - 本番環境では注意して使用
 
-**Return Value:**
+**戻り値:**
 
 ```python
 {
-    "long_allocated_released": 2,      # Number of slots force-released
-    "corrupted_recovered": 1,          # Number of slots successfully recovered
-    "corrupted_isolated": 1,           # Number of slots isolated (recovery failed)
-    "orphaned_locks_cleaned": 3,       # Number of orphaned locks removed
-    "errors": ["error message", ...]   # List of errors encountered
+    "long_allocated_released": 2,      # 強制解放されたスロット数
+    "corrupted_recovered": 1,          # 正常にリカバリーされたスロット数
+    "corrupted_isolated": 1,           # 隔離されたスロット数（リカバリー失敗）
+    "orphaned_locks_cleaned": 3,       # 削除された孤立したロック数
+    "errors": ["error message", ...]   # 発生したエラーのリスト
 }
 ```
 
-## Recovery Strategies
+## リカバリー戦略
 
-### Strategy 1: Conservative (Recommended for Production)
+### 戦略1: 保守的（本番環境推奨）
 
-Detect issues but don't force-release active allocations:
+問題を検出するが、アクティブな割り当てを強制解放しない：
 
 ```python
 results = manager.auto_recover(
-    max_allocation_hours=48,           # Higher threshold
+    max_allocation_hours=48,           # より高いしきい値
     recover_corrupted=True,
     cleanup_orphaned_locks=True,
-    force_release_long_allocated=False # Don't interrupt active work
+    force_release_long_allocated=False # アクティブな作業を中断しない
 )
 ```
 
-**Best for:**
-- Production environments
-- When agent processes may legitimately run for long periods
-- When manual review of long allocations is preferred
+**最適な用途:**
+- 本番環境
+- エージェントプロセスが正当に長時間実行される可能性がある場合
+- 長時間割り当ての手動レビューが望ましい場合
 
-### Strategy 2: Aggressive (Recommended for Development)
+### 戦略2: 積極的（開発環境推奨）
 
-Aggressively clean up all anomalies:
+すべての異常を積極的にクリーンアップ：
 
 ```python
 results = manager.auto_recover(
     max_allocation_hours=24,
     recover_corrupted=True,
     cleanup_orphaned_locks=True,
-    force_release_long_allocated=True  # Force cleanup
+    force_release_long_allocated=True  # 強制クリーンアップ
 )
 ```
 
-**Best for:**
-- Development environments
-- After system crashes
-- When you know no legitimate long-running processes exist
+**最適な用途:**
+- 開発環境
+- システムクラッシュ後
+- 正当な長時間実行プロセスが存在しないことがわかっている場合
 
-### Strategy 3: Maintenance Mode
+### 戦略3: メンテナンスモード
 
-Focus on corruption and locks, ignore allocations:
+破損とロックに焦点を当て、割り当てを無視：
 
 ```python
 results = manager.auto_recover(
@@ -218,15 +218,15 @@ results = manager.auto_recover(
 )
 ```
 
-**Best for:**
-- Regular maintenance
-- When you want to fix infrastructure issues without affecting running agents
+**最適な用途:**
+- 定期メンテナンス
+- 実行中のエージェントに影響を与えずにインフラストラクチャの問題を修正したい場合
 
-## Scheduled Recovery
+## スケジュールされたリカバリー
 
-### Cron Job Example
+### Cronジョブの例
 
-Run automatic recovery daily at 2 AM:
+毎日午前2時に自動リカバリーを実行：
 
 ```bash
 # /etc/cron.d/necrocode-recovery
@@ -250,7 +250,7 @@ logging.basicConfig(
 config = PoolConfig.load_from_file()
 manager = PoolManager(config=config)
 
-# Run conservative recovery
+# 保守的なリカバリーを実行
 results = manager.auto_recover(
     max_allocation_hours=48,
     recover_corrupted=True,
@@ -258,19 +258,19 @@ results = manager.auto_recover(
     force_release_long_allocated=False
 )
 
-logging.info(f"Recovery completed: {results}")
+logging.info(f"リカバリー完了: {results}")
 ```
 
-### Monitoring Integration
+### 監視統合
 
-Integrate with monitoring systems:
+監視システムとの統合：
 
 ```python
 def health_check():
-    """Check system health and alert if issues found."""
+    """システムの健全性をチェックし、問題が見つかった場合はアラート"""
     manager = PoolManager.from_config_file()
     
-    # Detect anomalies
+    # 異常を検出
     anomalies = manager.detect_anomalies(max_allocation_hours=24)
     
     total_issues = (
@@ -280,13 +280,13 @@ def health_check():
     )
     
     if total_issues > 0:
-        # Send alert to monitoring system
-        send_alert(f"Repo Pool Manager: {total_issues} issues detected")
+        # 監視システムにアラートを送信
+        send_alert(f"Repo Pool Manager: {total_issues}件の問題を検出")
         
-        # Attempt auto-recovery
+        # 自動リカバリーを試みる
         results = manager.auto_recover()
         
-        # Report results
+        # 結果を報告
         send_metric("recovery.slots_released", results['long_allocated_released'])
         send_metric("recovery.slots_recovered", results['corrupted_recovered'])
         send_metric("recovery.slots_isolated", results['corrupted_isolated'])
@@ -295,44 +295,44 @@ def health_check():
     return total_issues == 0
 ```
 
-## Best Practices
+## ベストプラクティス
 
-### 1. Regular Health Checks
+### 1. 定期的な健全性チェック
 
-Run anomaly detection regularly (e.g., hourly):
+定期的に異常検出を実行（例：毎時）：
 
 ```python
-# Check for issues without taking action
+# アクションを取らずに問題をチェック
 anomalies = manager.detect_anomalies()
 if any(len(v) > 0 for v in anomalies.values()):
-    logger.warning(f"Anomalies detected: {anomalies}")
+    logger.warning(f"異常を検出: {anomalies}")
 ```
 
-### 2. Gradual Recovery
+### 2. 段階的なリカバリー
 
-For large numbers of issues, recover gradually:
+多数の問題がある場合は、段階的にリカバリー：
 
 ```python
-# First pass: Clean up locks and recover obvious corruption
+# 第1パス: ロックをクリーンアップし、明らかな破損をリカバリー
 results1 = manager.auto_recover(
     recover_corrupted=True,
     cleanup_orphaned_locks=True,
     force_release_long_allocated=False
 )
 
-# Wait and verify
+# 待機して検証
 time.sleep(60)
 
-# Second pass: Handle remaining issues if needed
+# 第2パス: 必要に応じて残りの問題を処理
 anomalies = manager.detect_anomalies()
 if len(anomalies['long_allocated_slots']) > 0:
-    # Manual review or force-release
+    # 手動レビューまたは強制解放
     pass
 ```
 
-### 3. Logging and Alerting
+### 3. ロギングとアラート
 
-Always log recovery actions:
+常にリカバリーアクションをログに記録：
 
 ```python
 import logging
@@ -342,117 +342,117 @@ logger = logging.getLogger(__name__)
 results = manager.auto_recover()
 
 logger.info(
-    f"Auto-recovery completed: "
-    f"released={results['long_allocated_released']}, "
-    f"recovered={results['corrupted_recovered']}, "
-    f"isolated={results['corrupted_isolated']}, "
-    f"locks_cleaned={results['orphaned_locks_cleaned']}"
+    f"自動リカバリー完了: "
+    f"解放={results['long_allocated_released']}, "
+    f"リカバリー={results['corrupted_recovered']}, "
+    f"隔離={results['corrupted_isolated']}, "
+    f"ロッククリーンアップ={results['orphaned_locks_cleaned']}"
 )
 
 if results['errors']:
-    logger.error(f"Recovery errors: {results['errors']}")
+    logger.error(f"リカバリーエラー: {results['errors']}")
 ```
 
-### 4. Manual Intervention for Isolated Slots
+### 4. 隔離されたスロットの手動介入
 
-Isolated slots require manual attention:
+隔離されたスロットには手動の注意が必要：
 
 ```python
-# Find isolated slots
+# 隔離されたスロットを見つける
 pool = manager.get_pool("my-repo")
 isolated = [s for s in pool.slots if s.state == SlotState.ERROR]
 
 for slot in isolated:
-    logger.info(f"Isolated slot: {slot.slot_id}")
-    logger.info(f"  Isolated at: {slot.metadata.get('isolated_at')}")
-    logger.info(f"  Reason: {slot.metadata.get('isolation_reason')}")
+    logger.info(f"隔離されたスロット: {slot.slot_id}")
+    logger.info(f"  隔離日時: {slot.metadata.get('isolated_at')}")
+    logger.info(f"  理由: {slot.metadata.get('isolation_reason')}")
     
-    # Attempt recovery
+    # リカバリーを試みる
     success = manager.recover_slot(slot.slot_id, force=True)
     if success:
-        logger.info(f"  ✓ Recovered successfully")
+        logger.info(f"  ✓ 正常にリカバリー")
     else:
-        logger.error(f"  ✗ Recovery failed - manual intervention required")
+        logger.error(f"  ✗ リカバリー失敗 - 手動介入が必要")
 ```
 
-## Troubleshooting
+## トラブルシューティング
 
-### Issue: Recovery Keeps Failing
+### 問題: リカバリーが繰り返し失敗する
 
-**Symptoms:** Same slots repeatedly fail recovery
+**症状:** 同じスロットが繰り返しリカバリーに失敗
 
-**Solutions:**
-1. Check disk space: `df -h`
-2. Check git repository health manually:
+**解決策:**
+1. ディスク容量を確認: `df -h`
+2. gitリポジトリの健全性を手動で確認:
    ```bash
    cd /path/to/slot
    git fsck --full
    ```
-3. Check file permissions
-4. Consider removing and re-creating the slot:
+3. ファイルのパーミッションを確認
+4. スロットを削除して再作成することを検討:
    ```python
    manager.remove_slot(slot_id, force=True)
    manager.add_slot(repo_name)
    ```
 
-### Issue: Too Many Long-Allocated Slots
+### 問題: 長時間割り当てられたスロットが多すぎる
 
-**Symptoms:** Many slots allocated for long periods
+**症状:** 多くのスロットが長時間割り当てられている
 
-**Possible Causes:**
-- Agent processes are legitimately long-running
-- Agents are crashing without releasing slots
-- Threshold is too low
+**考えられる原因:**
+- エージェントプロセスが正当に長時間実行されている
+- エージェントがスロットを解放せずにクラッシュしている
+- しきい値が低すぎる
 
-**Solutions:**
-1. Increase threshold: `max_allocation_hours=48`
-2. Check agent logs for crashes
-3. Implement agent heartbeat monitoring
-4. Add timeout to agent execution
+**解決策:**
+1. しきい値を増やす: `max_allocation_hours=48`
+2. クラッシュについてエージェントログを確認
+3. エージェントハートビート監視を実装
+4. エージェント実行にタイムアウトを追加
 
-### Issue: Orphaned Locks Persist
+### 問題: 孤立したロックが持続する
 
-**Symptoms:** Locks keep appearing after cleanup
+**症状:** クリーンアップ後もロックが表示され続ける
 
-**Possible Causes:**
-- Active processes are creating locks
-- File system issues
-- Concurrent access without proper locking
+**考えられる原因:**
+- アクティブなプロセスがロックを作成している
+- ファイルシステムの問題
+- 適切なロックなしの同時アクセス
 
-**Solutions:**
-1. Check for running agent processes
-2. Verify lock directory permissions
-3. Check for file system errors
-4. Review agent code for proper lock usage
+**解決策:**
+1. 実行中のエージェントプロセスを確認
+2. ロックディレクトリのパーミッションを確認
+3. ファイルシステムエラーを確認
+4. 適切なロック使用についてエージェントコードをレビュー
 
-## API Reference
+## APIリファレンス
 
-### Detection Methods
+### 検出メソッド
 
 ```python
-# Detect long-allocated slots
+# 長時間割り当てられたスロットを検出
 long_allocated = manager.detect_long_allocated_slots(max_allocation_hours=24)
 
-# Detect corrupted slots
+# 破損したスロットを検出
 corrupted = manager.detect_corrupted_slots()
 
-# Detect orphaned locks
+# 孤立したロックを検出
 orphaned = manager.detect_orphaned_locks()
 
-# Detect all anomalies
+# すべての異常を検出
 anomalies = manager.detect_anomalies(max_allocation_hours=24)
 ```
 
-### Recovery Methods
+### リカバリーメソッド
 
 ```python
-# Recover single slot
+# 単一スロットをリカバリー
 success = manager.recover_slot(slot_id, force=False)
 
-# Isolate slot
+# スロットを隔離
 manager.isolate_slot(slot_id)
 
-# Automatic recovery
+# 自動リカバリー
 results = manager.auto_recover(
     max_allocation_hours=24,
     recover_corrupted=True,
@@ -461,31 +461,31 @@ results = manager.auto_recover(
 )
 ```
 
-### Lock Management
+### ロック管理
 
 ```python
-# Detect stale locks
+# 古いロックを検出
 stale = manager.lock_manager.detect_stale_locks(max_age_hours=24)
 
-# Clean up stale locks
+# 古いロックをクリーンアップ
 count = manager.lock_manager.cleanup_stale_locks(max_age_hours=24)
 
-# Force unlock
+# 強制アンロック
 manager.lock_manager.force_unlock(slot_id)
 ```
 
-## Requirements Mapping
+## 要件マッピング
 
-This implementation satisfies the following requirements:
+この実装は以下の要件を満たします：
 
-- **Requirement 9.1**: Git operation retry mechanism (3 retries)
-- **Requirement 9.2**: Slot repair and re-initialization
-- **Requirement 9.3**: Detection of long-allocated slots
-- **Requirement 9.4**: Detection and cleanup of orphaned locks
-- **Requirement 9.5**: Slot isolation for manual intervention
+- **要件 9.1**: Git操作のリトライメカニズム（3回リトライ）
+- **要件 9.2**: スロットの修復と再初期化
+- **要件 9.3**: 長時間割り当てられたスロットの検出
+- **要件 9.4**: 孤立したロックの検出とクリーンアップ
+- **要件 9.5**: 手動介入のためのスロット隔離
 
-## See Also
+## 関連ドキュメント
 
-- [README.md](README.md) - Main documentation
-- [CONFIG_GUIDE.md](CONFIG_GUIDE.md) - Configuration guide
-- [examples/error_recovery_example.py](../../examples/error_recovery_example.py) - Usage examples
+- [README.md](README.md) - メインドキュメント
+- [CONFIG_GUIDE.md](CONFIG_GUIDE.md) - 設定ガイド
+- [examples/error_recovery_example.py](../../examples/error_recovery_example.py) - 使用例

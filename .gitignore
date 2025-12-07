@@ -1,4 +1,8 @@
 __pycache__/
 *.pyc
 .DS_Store
-kiroween-skeleton-crew*
+
+# NecroCode worktrees
+worktrees/
+.kiro/registry/*.lock
+.kiro/current-task.md

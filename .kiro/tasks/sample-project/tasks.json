@@ -1,0 +1,55 @@
+{
+  "project": "sample-project",
+  "tasks": [
+    {
+      "id": "1",
+      "title": "データベーススキーマ設定",
+      "description": "ユーザーとメッセージのデータモデルを作成",
+      "dependencies": [],
+      "type": "backend",
+      "files_to_create": [
+        "models/user.py",
+        "models/message.py"
+      ],
+      "acceptance_criteria": [
+        "Userモデルにemail, username, password_hashフィールドがある",
+        "Messageモデルにsender_id, content, timestampフィールドがある",
+        "適切なバリデーションが実装されている"
+      ]
+    },
+    {
+      "id": "2",
+      "title": "認証API実装",
+      "description": "ログイン・登録エンドポイントを作成",
+      "dependencies": ["1"],
+      "type": "backend",
+      "files_to_create": [
+        "api/auth.py",
+        "tests/test_auth.py"
+      ],
+      "acceptance_criteria": [
+        "POST /api/auth/registerでユーザー登録ができる",
+        "POST /api/auth/loginでJWTトークンが返される",
+        "パスワードはハッシュ化されて保存される",
+        "テストが全て通る"
+      ]
+    },
+    {
+      "id": "3",
+      "title": "フロントエンドUI作成",
+      "description": "ログインフォームとメッセージ表示画面を作成",
+      "dependencies": ["2"],
+      "type": "frontend",
+      "files_to_create": [
+        "frontend/login.html",
+        "frontend/chat.html",
+        "frontend/styles.css"
+      ],
+      "acceptance_criteria": [
+        "ログインフォームが表示される",
+        "認証成功後にチャット画面に遷移する",
+        "レスポンシブデザインになっている"
+      ]
+    }
+  ]
+}
