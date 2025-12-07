@@ -26,6 +26,7 @@ def plan(job_description: str, project: str):
     
     sample_tasks = {
         "project": project,
+        "description": job_description,
         "tasks": [
             {
                 "id": "1",
@@ -53,15 +54,18 @@ def plan(job_description: str, project: str):
 @cli.command()
 @click.argument('project_name')
 @click.option('--workers', default=3, help='並列実行数')
-def execute(project_name: str, workers: int):
+@click.option('--mode', type=click.Choice(['auto', 'manual', 'api']), default='manual', 
+              help='Kiro実行モード (auto: 自動実行, manual: 手動実行, api: API経由)')
+def execute(project_name: str, workers: int, mode: str):
     """タスクを並列実行"""
     click.echo(f"プロジェクト '{project_name}' を実行中...")
     click.echo(f"並列ワーカー数: {workers}")
+    click.echo(f"Kiroモード: {mode}")
     
-    orchestrator = ParallelOrchestrator(Path("."), max_workers=workers)
+    orchestrator = ParallelOrchestrator(Path("."), max_workers=workers, kiro_mode=mode)
     orchestrator.execute_parallel(project_name)
     
-    click.echo("✓ 全タスク完了")
+    click.echo("\n✓ 全タスク完了")
 
 
 @cli.command()
@@ -80,13 +84,53 @@ def status(project: str):
 
 
 @cli.command()
-def cleanup():
+@click.option('--force', is_flag=True, help='強制的にクリーンアップ')
+def cleanup(force: bool):
     """全てのworktreeをクリーンアップ"""
     from necrocode.worktree_manager import WorktreeManager
     
     mgr = WorktreeManager(Path("."))
+    
+    if not force:
+        worktrees = mgr.list_worktrees()
+        task_worktrees = [wt for wt in worktrees if 'task-' in wt.get('path', '')]
+        
+        if task_worktrees:
+            click.echo(f"{len(task_worktrees)}個のタスクworktreeが見つかりました:")
+            for wt in task_worktrees:
+                click.echo(f"  - {wt.get('path')}")
+            
+            if not click.confirm('これらを削除しますか？'):
+                click.echo("キャンセルしました")
+                return
+    
     mgr.cleanup_all()
     click.echo("✓ 全worktreeをクリーンアップしました")
+
+
+@cli.command()
+@click.argument('project_name')
+def list_tasks(project_name: str):
+    """プロジェクトのタスク一覧を表示"""
+    tasks_file = Path(".kiro/tasks") / project_name / "tasks.json"
+    
+    if not tasks_file.exists():
+        click.echo(f"エラー: プロジェクト '{project_name}' が見つかりません")
+        return
+    
+    with open(tasks_file) as f:
+        data = json.load(f)
+    
+    click.echo(f"\nプロジェクト: {data['project']}")
+    click.echo(f"タスク数: {len(data['tasks'])}\n")
+    
+    for task in data['tasks']:
+        deps = task.get('dependencies', [])
+        deps_str = f" (依存: {', '.join(deps)})" if deps else ""
+        click.echo(f"Task {task['id']}: {task['title']}{deps_str}")
+        click.echo(f"  タイプ: {task.get('type', 'N/A')}")
+        click.echo(f"  説明: {task['description']}")
+        click.echo()
 
 
 if __name__ == "__main__":

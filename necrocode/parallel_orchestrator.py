@@ -12,9 +12,10 @@ from necrocode.task_registry import TaskRegistry
 class ParallelOrchestrator:
     """並列タスク実行の調整"""
     
-    def __init__(self, project_dir: Path, max_workers: int = 3):
+    def __init__(self, project_dir: Path, max_workers: int = 3, kiro_mode: str = "manual"):
         self.project_dir = Path(project_dir)
         self.max_workers = max_workers
+        self.kiro_mode = kiro_mode
         self.worktree_mgr = WorktreeManager(project_dir)
         self.task_registry = TaskRegistry(project_dir / ".kiro/registry")
     
@@ -27,20 +28,18 @@ class ParallelOrchestrator:
             completed_tasks = set()
             
             while len(completed_tasks) < len(tasks):
-                # 実行可能なタスクを取得
                 ready_tasks = self._get_ready_tasks(tasks, completed_tasks)
                 
-                # 並列実行を開始
                 for task in ready_tasks:
                     if task["id"] not in futures and task["id"] not in completed_tasks:
                         future = executor.submit(
                             execute_task_in_worktree,
                             self.project_dir,
-                            task
+                            task,
+                            self.kiro_mode
                         )
                         futures[task["id"]] = future
                 
-                # 完了を待機
                 done_ids = []
                 for task_id, future in futures.items():
                     if future.done():
@@ -51,7 +50,7 @@ class ParallelOrchestrator:
                             print(f"✓ Task {task_id} completed: {result.get('pr_url', 'N/A')}")
                         except Exception as e:
                             print(f"✗ Task {task_id} failed: {e}")
-                            completed_tasks.add(task_id)  # 失敗してもスキップ
+                            completed_tasks.add(task_id)
                             done_ids.append(task_id)
                 
                 for task_id in done_ids:
@@ -76,10 +75,11 @@ class ParallelOrchestrator:
         return ready
 
 
-def execute_task_in_worktree(project_dir: Path, task: Dict) -> Dict:
+def execute_task_in_worktree(project_dir: Path, task: Dict, kiro_mode: str = "manual") -> Dict:
     """独立したworktreeでタスクを実行（プロセス分離用）"""
     from necrocode.worktree_manager import WorktreeManager
     from necrocode.task_context import TaskContextGenerator
+    from necrocode.kiro_invoker import KiroInvoker
     
     task_id = task["id"]
     slug = task["title"].lower().replace(" ", "-")[:30]
@@ -87,23 +87,31 @@ def execute_task_in_worktree(project_dir: Path, task: Dict) -> Dict:
     
     worktree_mgr = WorktreeManager(project_dir)
     context_gen = TaskContextGenerator()
+    kiro = KiroInvoker()
     
     try:
         # 1. Worktreeを作成
+        print(f"[Task {task_id}] Worktreeを作成中...")
         worktree_path = worktree_mgr.create_worktree(task_id, branch_name)
         
         # 2. タスクコンテキストを書き込み
+        print(f"[Task {task_id}] タスクコンテキストを生成中...")
         context_gen.generate(worktree_path, task)
         
-        # 3. Kiroを呼び出し（現時点ではスタブ）
-        # TODO: 実際のKiro呼び出しを実装
-        print(f"[Task {task_id}] Kiro実行中...")
+        # 3. Kiroを呼び出し
+        print(f"[Task {task_id}] Kiroを実行中...")
+        kiro_result = kiro.invoke(worktree_path, task, mode=kiro_mode)
+        
+        if not kiro_result.get("success"):
+            raise RuntimeError(f"Kiro execution failed: {kiro_result.get('stderr', 'Unknown error')}")
         
         # 4. 変更をコミット
+        print(f"[Task {task_id}] 変更をコミット中...")
         _commit_changes(worktree_path, task)
         
-        # 5. ブランチをプッシュ
-        _push_branch(worktree_path, branch_name)
+        # 5. ブランチをプッシュ（オプション）
+        # print(f"[Task {task_id}] ブランチをプッシュ中...")
+        # _push_branch(worktree_path, branch_name)
         
         # 6. PRを作成（スタブ）
         pr_url = f"https://github.com/user/repo/pull/{task_id}"
@@ -111,16 +119,36 @@ def execute_task_in_worktree(project_dir: Path, task: Dict) -> Dict:
         return {
             "task_id": task_id,
             "status": "success",
-            "pr_url": pr_url
+            "pr_url": pr_url,
+            "branch": branch_name,
+            "worktree": str(worktree_path)
         }
     
+    except Exception as e:
+        print(f"[Task {task_id}] エラー: {e}")
+        raise
+    
     finally:
-        # 7. Worktreeをクリーンアップ
-        worktree_mgr.remove_worktree(task_id, force=True)
+        # 7. Worktreeをクリーンアップ（オプション）
+        # worktree_mgr.remove_worktree(task_id, force=True)
+        pass
 
 
 def _commit_changes(worktree_path: Path, task: Dict):
     """変更をコミット"""
+    # 変更があるか確認
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=worktree_path,
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    
+    if not status.stdout.strip():
+        print(f"  変更なし、コミットをスキップ")
+        return
+    
     subprocess.run(["git", "add", "."], cwd=worktree_path, check=True)
     
     commit_msg = f"feat(task-{task['id']}): {task['title']}\n\nTask: {task['id']}"
