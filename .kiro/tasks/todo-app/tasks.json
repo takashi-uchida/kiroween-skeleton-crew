@@ -1,0 +1,21 @@
+{
+  "project": "todo-app",
+  "description": "シンプルなTODOアプリを作成",
+  "tasks": [
+    {
+      "id": "1",
+      "title": "プロジェクト初期化",
+      "description": "基本的なプロジェクト構造を作成",
+      "dependencies": [],
+      "type": "setup",
+      "files_to_create": [
+        "README.md",
+        ".gitignore"
+      ],
+      "acceptance_criteria": [
+        "README.mdにプロジェクト説明がある",
+        ".gitignoreに基本的な除外設定がある"
+      ]
+    }
+  ]
+}
