@@ -1,11 +1,88 @@
 """NecroCode CLI - Kiro並列実行オーケストレーター"""
-import click
-from pathlib import Path
+from __future__ import annotations
+
 import json
+from collections import Counter
+from pathlib import Path
+from typing import Iterable, List, Sequence
+
+import click
 
 from necrocode.parallel_orchestrator import ParallelOrchestrator
-from necrocode.task_registry import TaskRegistry
-from necrocode.task_planner import TaskPlanner
+from necrocode.task_planner import Task, TaskPlanner
+from necrocode.task_registry import (
+    TaskDefinition,
+    TaskRegistry,
+    TaskRegistryError,
+    TaskState,
+    TasksetNotFoundError,
+)
+
+
+def _register_tasks_with_registry(project: str, description: str, tasks: Sequence[Task]) -> None:
+    """Persist generated tasks to the Task Registry for status tracking."""
+    if not tasks:
+        return
+    registry_root = Path(".kiro/registry")
+    registry = TaskRegistry(registry_root)
+
+    task_definitions = [
+        TaskDefinition(
+            id=str(task.id),
+            title=task.title,
+            description=task.description,
+            is_optional=getattr(task, "is_optional", False),
+            is_completed=False,
+            dependencies=list(task.dependencies),
+        )
+        for task in tasks
+    ]
+
+    metadata = {
+        "description": description,
+        "project": project,
+        "source": "necrocode.cli",
+    }
+
+    try:
+        registry.create_taskset(
+            spec_name=project,
+            tasks=task_definitions,
+            metadata=metadata,
+        )
+    except TaskRegistryError as exc:
+        click.echo(f"⚠️ Task Registryへの登録に失敗しました: {exc}")
+
+
+def _print_task_summary(tasks: Iterable[Task]) -> None:
+    """Display generated tasks in a human friendly list."""
+    click.echo("\nタスク一覧:")
+    for task in tasks:
+        deps = list(task.dependencies)
+        deps_str = f" (依存: {', '.join(deps)})" if deps else ""
+        click.echo(f"  - Task {task.id}: {task.title}{deps_str}")
+
+
+def _generate_fallback_tasks(job_description: str, project: str) -> List[Task]:
+    """Return a minimal task list when LLM generation is unavailable."""
+    return [
+        Task(
+            id="1",
+            title="プロジェクト初期化",
+            description="基本的なプロジェクト構造を作成",
+            dependencies=[],
+            type="setup",
+            files_to_create=["README.md", ".gitignore"],
+            acceptance_criteria=[
+                "README.mdにプロジェクト説明がある",
+                ".gitignoreに基本的な除外設定がある",
+            ],
+            technical_context={
+                "job_description": job_description,
+                "project": project,
+            },
+        )
+    ]
 
 
 @click.group()
@@ -19,62 +96,33 @@ def cli():
 @click.option('--project', default='default', help='プロジェクト名')
 @click.option('--use-llm/--no-llm', default=True, help='LLMを使用してタスクを生成')
 def plan(job_description: str, project: str, use_llm: bool):
-    """ジョブ記述からタスクを計画"""
+    """ジョブ記述からタスクを計画して Task Registry に登録"""
+    planner = TaskPlanner()
+    tasks: List[Task] = []
     
     if use_llm:
         click.echo("LLMを使用してタスクを生成中...")
-        planner = TaskPlanner()
-        
         try:
-            tasks_data = planner.plan(job_description, project)
-            tasks_dir = Path(".kiro/tasks") / project
-            tasks_file = planner.save_tasks(tasks_data, tasks_dir)
-            
-            click.echo(f"✓ {len(tasks_data['tasks'])}個のタスクを作成しました")
-            click.echo(f"  保存先: {tasks_file}")
-            
-            # タスク一覧を表示
-            click.echo(f"\nタスク一覧:")
-            for task in tasks_data['tasks']:
-                deps = task.get('dependencies', [])
-                deps_str = f" (依存: {', '.join(deps)})" if deps else ""
-                click.echo(f"  - Task {task['id']}: {task['title']}{deps_str}")
-        
-        except Exception as e:
-            click.echo(f"エラー: LLMでのタスク生成に失敗しました: {e}")
+            tasks = planner.plan(job_description, project)
+        except Exception as exc:  # pragma: no cover - defensive
+            click.echo(f"エラー: LLMでのタスク生成に失敗しました: {exc}")
             click.echo("フォールバックタスクを使用します...")
             use_llm = False
     
     if not use_llm:
-        # フォールバック: サンプルタスク
-        tasks_dir = Path(".kiro/tasks") / project
-        tasks_dir.mkdir(parents=True, exist_ok=True)
-        
-        sample_tasks = {
-            "project": project,
-            "description": job_description,
-            "tasks": [
-                {
-                    "id": "1",
-                    "title": "プロジェクト初期化",
-                    "description": "基本的なプロジェクト構造を作成",
-                    "dependencies": [],
-                    "type": "setup",
-                    "files_to_create": ["README.md", ".gitignore"],
-                    "acceptance_criteria": [
-                        "README.mdにプロジェクト説明がある",
-                        ".gitignoreに基本的な除外設定がある"
-                    ]
-                }
-            ]
-        }
-        
-        tasks_file = tasks_dir / "tasks.json"
-        with open(tasks_file, 'w') as f:
-            json.dump(sample_tasks, f, indent=2, ensure_ascii=False)
-        
-        click.echo(f"✓ {len(sample_tasks['tasks'])}個のタスクを作成しました")
-        click.echo(f"  保存先: {tasks_file}")
+        tasks = _generate_fallback_tasks(job_description, project)
+        planner.save_tasks(project, tasks)
+    
+    if not tasks:
+        click.echo("エラー: タスク生成に失敗しました")
+        return
+    
+    tasks_file = planner.tasks_dir / project / "tasks.json"
+    click.echo(f"✓ {len(tasks)}個のタスクを作成しました")
+    click.echo(f"  保存先: {tasks_file}")
+    _print_task_summary(tasks)
+    
+    _register_tasks_with_registry(project, job_description, tasks)
 
 
 @cli.command()
@@ -100,45 +148,137 @@ def execute(project_name: str, workers: int, mode: str, show_progress: bool):
     click.echo("\n✓ 全タスク完了")
 
 
+_STATUS_ICONS = {
+    TaskState.DONE.value: "✓",
+    TaskState.RUNNING.value: "⚙",
+    TaskState.READY.value: "⏳",
+    TaskState.BLOCKED.value: "🔒",
+    TaskState.FAILED.value: "✗",
+}
+
+
+def _summarize_taskset(taskset, include_tasks: bool = True) -> dict:
+    """Create a serializable snapshot of a Taskset."""
+    total = len(taskset.tasks)
+    counts = Counter(task.state for task in taskset.tasks)
+    
+    summary = {
+        "project": taskset.spec_name,
+        "version": taskset.version,
+        "total_tasks": total,
+        "completed": counts.get(TaskState.DONE, 0),
+        "running": counts.get(TaskState.RUNNING, 0),
+        "ready": counts.get(TaskState.READY, 0),
+        "blocked": counts.get(TaskState.BLOCKED, 0),
+        "failed": counts.get(TaskState.FAILED, 0),
+        "progress": (counts.get(TaskState.DONE, 0) / total * 100) if total else 0.0,
+        "created_at": taskset.created_at.isoformat(),
+        "updated_at": taskset.updated_at.isoformat(),
+        "metadata": taskset.metadata,
+    }
+    
+    if include_tasks:
+        summary["tasks"] = [
+            {
+                "id": task.id,
+                "title": task.title,
+                "state": task.state.value,
+                "dependencies": task.dependencies,
+                "updated_at": task.updated_at.isoformat(),
+            }
+            for task in taskset.tasks
+        ]
+    
+    return summary
+
+
+def _load_taskset_summary(registry: TaskRegistry, project: str, include_tasks: bool) -> dict | None:
+    """Safely load a taskset summary for CLI output."""
+    try:
+        taskset = registry.get_taskset(project)
+    except TasksetNotFoundError:
+        return None
+    return _summarize_taskset(taskset, include_tasks=include_tasks)
+
+
+def _print_project_status(summary: dict) -> None:
+    """Render a single project's status in table form."""
+    click.echo(f"\nプロジェクト: {summary['project']} (version {summary['version']})")
+    click.echo(
+        f"進捗: {summary['progress']:.1f}% "
+        f"({summary['completed']}/{summary['total_tasks']} 完了, 失敗 {summary['failed']})"
+    )
+    click.echo(
+        "状態内訳: "
+        f"完了 {summary['completed']} / 実行中 {summary['running']} / "
+        f"準備済 {summary['ready']} / ブロック {summary['blocked']} / 失敗 {summary['failed']}"
+    )
+    click.echo(f"作成: {summary['created_at']} | 最終更新: {summary['updated_at']}")
+    
+    description = summary.get("metadata", {}).get("description")
+    if description:
+        click.echo(f"説明: {description}")
+    
+    tasks = summary.get("tasks", [])
+    if not tasks:
+        click.echo("タスクが登録されていません")
+        return
+    
+    click.echo("\nタスク詳細:")
+    for task in tasks:
+        icon = _STATUS_ICONS.get(task["state"], "•")
+        deps = task.get("dependencies") or []
+        deps_str = f" (依存: {', '.join(deps)})" if deps else ""
+        click.echo(f"  {icon} [{task['state']}] Task {task['id']}: {task['title']}{deps_str}")
+
+
 @cli.command()
 @click.option('--project', default=None, help='プロジェクト名')
-def status(project: str):
-    """実行状況を表示"""
+@click.option(
+    '--format',
+    'output_format',
+    type=click.Choice(['table', 'json']),
+    default='table',
+    help='表示形式 (table/json)',
+)
+def status(project: str, output_format: str):
+    """Task Registryの情報を基に実行状況を表示"""
     registry = TaskRegistry(Path(".kiro/registry"))
     
     if project:
-        click.echo(f"プロジェクト '{project}' の状況:")
-        # TODO: プロジェクト別の状況を表示
-    else:
-        click.echo("全プロジェクトの状況:")
-    
-    # タスクレジストリから状況を取得
-    try:
-        # 簡易実装: tasks.jsonから読み込み
-        if project:
-            tasks_file = Path(".kiro/tasks") / project / "tasks.json"
-            if tasks_file.exists():
-                with open(tasks_file) as f:
-                    data = json.load(f)
-                
-                click.echo(f"\nプロジェクト: {data['project']}")
-                click.echo(f"タスク数: {len(data['tasks'])}")
-                click.echo(f"説明: {data.get('description', 'N/A')}")
-            else:
-                click.echo(f"エラー: プロジェクト '{project}' が見つかりません")
+        summary = _load_taskset_summary(registry, project, include_tasks=True)
+        if summary is None:
+            click.echo(f"エラー: プロジェクト '{project}' は Task Registry に登録されていません")
+            return
+        
+        if output_format == 'json':
+            click.echo(json.dumps(summary, ensure_ascii=False, indent=2))
         else:
-            # 全プロジェクトを列挙
-            tasks_dir = Path(".kiro/tasks")
-            if tasks_dir.exists():
-                projects = [d.name for d in tasks_dir.iterdir() if d.is_dir()]
-                click.echo(f"\n登録されているプロジェクト: {len(projects)}個")
-                for proj in projects:
-                    click.echo(f"  - {proj}")
-            else:
-                click.echo("プロジェクトが見つかりません")
+            _print_project_status(summary)
+        return
     
-    except Exception as e:
-        click.echo(f"エラー: {e}")
+    projects = registry.task_store.list_tasksets()
+    if not projects:
+        click.echo("Task Registryに登録されたプロジェクトがありません")
+        return
+    
+    summaries = []
+    for spec_name in projects:
+        summary = _load_taskset_summary(registry, spec_name, include_tasks=False)
+        if summary:
+            summaries.append(summary)
+    
+    if output_format == 'json':
+        payload = {"projects": summaries}
+        click.echo(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    
+    click.echo("全プロジェクトの状況:")
+    for summary in summaries:
+        click.echo(
+            f"  - {summary['project']}: {summary['progress']:.1f}% "
+            f"({summary['completed']}/{summary['total_tasks']} 完了, 失敗 {summary['failed']})"
+        )
 
 
 @cli.command()
