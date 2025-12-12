@@ -1,0 +1,46 @@
+name: Cleanup
+
+on:
+  schedule:
+    # 毎日午前2時（UTC）に実行
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  cleanup-worktrees:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+    
+    - name: Cleanup old worktrees (dry run)
+      run: |
+        python scripts/auto_cleanup.py --days 14 --dry-run --branches
+    
+    - name: Cleanup old worktrees
+      run: |
+        python scripts/auto_cleanup.py --days 14 --branches
+    
+    - name: Prune remote branches
+      run: |
+        git remote prune origin
+    
+    - name: Report cleanup results
+      run: |
+        echo "🧹 Cleanup completed"
+        git worktree list
+        git branch -a | grep -E "(feature/|hotfix/)" | wc -l || echo "0 feature branches remaining"
