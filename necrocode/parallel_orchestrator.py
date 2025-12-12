@@ -120,7 +120,7 @@ class ParallelOrchestrator:
         return ready
 
     def _update_task_state(self, spec_name: str, task_id: str, new_state: TaskState) -> None:
-        """Update Task Registry state, tolerating missing specs/tasks."""
+        """Task Registryの状態を更新（存在しない場合は無視）"""
         try:
             self.task_registry.update_task_state(
                 spec_name,

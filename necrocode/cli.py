@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 import click
 
@@ -20,12 +20,13 @@ from necrocode.task_registry import (
 
 
 def _register_tasks_with_registry(project: str, description: str, tasks: Sequence[Task]) -> None:
-    """Persist generated tasks to the Task Registry for status tracking."""
+    """Task Registry にタスクを登録して status から参照できるようにする."""
     if not tasks:
         return
+    
     registry_root = Path(".kiro/registry")
     registry = TaskRegistry(registry_root)
-
+    
     task_definitions = [
         TaskDefinition(
             id=str(task.id),
@@ -37,13 +38,12 @@ def _register_tasks_with_registry(project: str, description: str, tasks: Sequenc
         )
         for task in tasks
     ]
-
     metadata = {
         "description": description,
         "project": project,
         "source": "necrocode.cli",
     }
-
+    
     try:
         registry.create_taskset(
             spec_name=project,
@@ -55,7 +55,7 @@ def _register_tasks_with_registry(project: str, description: str, tasks: Sequenc
 
 
 def _print_task_summary(tasks: Iterable[Task]) -> None:
-    """Display generated tasks in a human friendly list."""
+    """生成済みタスクを一覧表示."""
     click.echo("\nタスク一覧:")
     for task in tasks:
         deps = list(task.dependencies)
@@ -64,7 +64,7 @@ def _print_task_summary(tasks: Iterable[Task]) -> None:
 
 
 def _generate_fallback_tasks(job_description: str, project: str) -> List[Task]:
-    """Return a minimal task list when LLM generation is unavailable."""
+    """LLMなし時に最低限のタスクを返す."""
     return [
         Task(
             id="1",
@@ -158,7 +158,7 @@ _STATUS_ICONS = {
 
 
 def _summarize_taskset(taskset, include_tasks: bool = True) -> dict:
-    """Create a serializable snapshot of a Taskset."""
+    """Taskset を CLI 用に要約."""
     total = len(taskset.tasks)
     counts = Counter(task.state for task in taskset.tasks)
     
@@ -192,8 +192,8 @@ def _summarize_taskset(taskset, include_tasks: bool = True) -> dict:
     return summary
 
 
-def _load_taskset_summary(registry: TaskRegistry, project: str, include_tasks: bool) -> dict | None:
-    """Safely load a taskset summary for CLI output."""
+def _load_taskset_summary(registry: TaskRegistry, project: str, include_tasks: bool) -> Optional[dict]:
+    """Taskset を安全に読み込み."""
     try:
         taskset = registry.get_taskset(project)
     except TasksetNotFoundError:
@@ -202,7 +202,7 @@ def _load_taskset_summary(registry: TaskRegistry, project: str, include_tasks: b
 
 
 def _print_project_status(summary: dict) -> None:
-    """Render a single project's status in table form."""
+    """単一プロジェクトのステータスをテーブル表示."""
     click.echo(f"\nプロジェクト: {summary['project']} (version {summary['version']})")
     click.echo(
         f"進捗: {summary['progress']:.1f}% "
@@ -242,7 +242,7 @@ def _print_project_status(summary: dict) -> None:
     help='表示形式 (table/json)',
 )
 def status(project: str, output_format: str):
-    """Task Registryの情報を基に実行状況を表示"""
+    """Task Registryを元に実行状況を表示"""
     registry = TaskRegistry(Path(".kiro/registry"))
     
     if project:
