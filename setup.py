@@ -25,6 +25,7 @@ setup(
     ],
     python_requires=">=3.9",
     install_requires=[
+        "click>=8.0.0",
         "pyyaml>=6.0.0",
         "gitpython>=3.1.0",
     ],

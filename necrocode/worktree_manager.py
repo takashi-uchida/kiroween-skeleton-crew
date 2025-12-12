@@ -84,13 +84,16 @@ class WorktreeManager:
         
         for wt in worktrees:
             path = Path(wt['path']).resolve()
-            # worktrees/配下のtask-*ディレクトリのみを削除
-            if path.parent == worktree_base_resolved and path.name.startswith('task-'):
-                task_id = path.name.replace('task-', '')
+            # worktrees/配下の全ディレクトリを削除（メインworktreeは除く）
+            if path.parent == worktree_base_resolved:
                 try:
-                    self.remove_worktree(task_id, force=True)
+                    # git worktree removeで削除
+                    import subprocess
+                    subprocess.run(['git', 'worktree', 'remove', '--force', str(path)], 
+                                 check=True, capture_output=True)
+                    print(f"✓ Removed worktree: {path.name}")
                 except Exception as e:
-                    print(f"Warning: Failed to remove worktree {task_id}: {e}")
+                    print(f"Warning: Failed to remove worktree {path.name}: {e}")
 
     def summarize_worktrees(self) -> List[Dict[str, Any]]:
         """worktreeメタデータを集約して返す"""

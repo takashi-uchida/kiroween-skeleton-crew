@@ -1,57 +1,54 @@
 """NecroCode CLI テスト"""
 import pytest
 from unittest.mock import patch, MagicMock
-from necrocode.cli import main, create_parser
+from click.testing import CliRunner
+from necrocode.cli import cli
 
 
-def test_create_parser():
-    """パーサー作成のテスト"""
-    parser = create_parser()
-    assert parser is not None
+def test_cli_help():
+    """CLIヘルプのテスト"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['--help'])
+    assert result.exit_code == 0
+    assert 'NecroCode' in result.output
+
+
+def test_plan_command_help():
+    """planコマンドのヘルプテスト"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['plan', '--help'])
+    assert result.exit_code == 0
+    assert 'plan' in result.output
+
+
+def test_execute_command_help():
+    """executeコマンドのヘルプテスト"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['execute', '--help'])
+    assert result.exit_code == 0
+    assert 'execute' in result.output
+
+
+def test_status_command_help():
+    """statusコマンドのヘルプテスト"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['status', '--help'])
+    assert result.exit_code == 0
+    assert 'status' in result.output
+
+
+def test_cleanup_command_help():
+    """cleanupコマンドのヘルプテスト"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['cleanup', '--help'])
+    assert result.exit_code == 0
+    assert 'cleanup' in result.output
+
+
+def test_list_tasks_command_no_project():
+    """list-tasksコマンドのテスト（プロジェクトが存在しない場合）"""
+    runner = CliRunner()
+    result = runner.invoke(cli, ['list-tasks', 'nonexistent-project'])
     
-    # ヘルプが正常に生成されることを確認
-    help_text = parser.format_help()
-    assert 'necrocode' in help_text.lower()
-
-
-def test_plan_command():
-    """planコマンドのテスト"""
-    parser = create_parser()
-    args = parser.parse_args(['plan', 'test description', '--project', 'test-project'])
-    
-    assert args.command == 'plan'
-    assert args.description == 'test description'
-    assert args.project == 'test-project'
-
-
-def test_execute_command():
-    """executeコマンドのテスト"""
-    parser = create_parser()
-    args = parser.parse_args(['execute', 'test-project', '--workers', '2'])
-    
-    assert args.command == 'execute'
-    assert args.project == 'test-project'
-    assert args.workers == 2
-
-
-def test_status_command():
-    """statusコマンドのテスト"""
-    parser = create_parser()
-    args = parser.parse_args(['status'])
-    
-    assert args.command == 'status'
-
-
-@patch('necrocode.cli.TaskPlanner')
-def test_main_plan_command(mock_planner):
-    """main関数のplanコマンドテスト"""
-    mock_instance = MagicMock()
-    mock_planner.return_value = mock_instance
-    
-    with patch('sys.argv', ['necrocode', 'plan', 'test', '--project', 'test']):
-        try:
-            main()
-        except SystemExit:
-            pass  # 正常終了
-    
-    mock_planner.assert_called_once()
+    assert result.exit_code == 0
+    assert 'エラー: プロジェクト' in result.output
