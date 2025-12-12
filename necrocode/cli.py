@@ -10,13 +10,10 @@ import click
 
 from necrocode.parallel_orchestrator import ParallelOrchestrator
 from necrocode.task_planner import Task, TaskPlanner
-from necrocode.task_registry import (
-    TaskDefinition,
-    TaskRegistry,
-    TaskRegistryError,
-    TaskState,
-    TasksetNotFoundError,
-)
+from necrocode.task_registry.task_registry import TaskRegistry
+from necrocode.task_registry.kiro_sync import TaskDefinition
+from necrocode.task_registry.exceptions import TaskRegistryError, TasksetNotFoundError
+from necrocode.task_registry.models import TaskState
 
 
 def _register_tasks_with_registry(project: str, description: str, tasks: Sequence[Task]) -> None:
