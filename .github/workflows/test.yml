@@ -31,7 +31,7 @@ jobs:
       run: |
         pytest tests/ -v --cov=necrocode --cov-report=term-missing
     
-    - name: Test CLI
+    - name: Test CLI module
       run: |
-        necrocode --help
-        necrocode status
+        python -m necrocode.cli --help
+        python -m necrocode.cli status
