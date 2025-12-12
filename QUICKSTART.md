@@ -9,65 +9,34 @@ pip install -e .
 
 ## 基本的な使い方
 
-### 1. サンプルプロジェクトを作成
+### 1. タスクを計画
 
 ```bash
-python examples/parallel_execution_demo.py
+python -m necrocode.cli plan "認証機能付きチャットアプリを作成" --project chat-app
 ```
-
-これにより、5つのタスクを持つチャットアプリプロジェクトが作成されます。
 
 ### 2. タスク一覧を確認
 
 ```bash
-python -m necrocode.cli list-tasks demo-chat-app
+python -m necrocode.cli status --project chat-app
 ```
 
-出力例:
-```
-プロジェクト: demo-chat-app
-タスク数: 5
-
-Task 1: プロジェクト構造作成
-  タイプ: setup
-  説明: 基本的なディレクトリとファイルを作成
-
-Task 2: データモデル実装 (依存: 1)
-  タイプ: backend
-  説明: UserとMessageのデータモデルを作成
-...
-```
-
-### 3. タスクを実行
-
-#### 手動モード（推奨）
+### 3. 並列実行
 
 ```bash
-python -m necrocode.cli execute demo-chat-app --workers 3 --mode manual
+python -m necrocode.cli execute chat-app --workers 3
 ```
-
-各タスクで以下が実行されます:
-1. 専用worktreeが作成される
-2. タスクコンテキストが生成される
-3. ユーザーに実装を促すメッセージが表示される
-4. ユーザーがKiroで実装
-5. 変更が自動的にコミットされる
-
-#### 自動モード（実験的）
-
-```bash
-python -m necrocode.cli execute demo-chat-app --workers 3 --mode auto
-```
-
-Kiro CLIが自動的に呼び出されます。
 
 ### 4. 実行状況を確認
 
 ```bash
-# Worktreeの状態を確認
+# 全体の状況
+python -m necrocode.cli status
+
+# Worktreeの状態
 git worktree list
 
-# 作成されたブランチを確認
+# 作成されたブランチ
 git branch
 ```
 
