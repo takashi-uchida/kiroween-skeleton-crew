@@ -87,10 +87,14 @@ class WorktreeManager:
             # worktrees/配下の全ディレクトリを削除（メインworktreeは除く）
             if path.parent == worktree_base_resolved:
                 try:
-                    # git worktree removeで削除
-                    import subprocess
-                    subprocess.run(['git', 'worktree', 'remove', '--force', str(path)], 
-                                 check=True, capture_output=True)
+                    # まずディレクトリを削除してからgit worktree pruneを実行
+                    import shutil
+                    if path.exists():
+                        shutil.rmtree(path)
+                    
+                    # git worktree pruneで参照をクリーンアップ
+                    subprocess.run(['git', 'worktree', 'prune'], 
+                                 cwd=self.repo_root, capture_output=True)
                     print(f"✓ Removed worktree: {path.name}")
                 except Exception as e:
                     print(f"Warning: Failed to remove worktree {path.name}: {e}")
