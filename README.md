@@ -46,7 +46,7 @@ pip install -e .
 
 ```bash
 # 1. タスクを計画
-python -m necrocode.cli plan "チャットアプリを作成" --project chat-app
+python -m necrocode.cli plan "認証機能付きチャットアプリを作成" --project chat-app
 
 # 2. 並列実行（3つのKiroインスタンス）
 python -m necrocode.cli execute chat-app --workers 3
@@ -56,6 +56,45 @@ python -m necrocode.cli status --project chat-app
 
 # 4. クリーンアップ
 python -m necrocode.cli cleanup
+```
+
+### 実際の使用例
+
+```bash
+# Webアプリケーションの作成
+python -m necrocode.cli plan "React + FastAPI でTodoアプリを作成。認証、CRUD、リアルタイム更新機能を含む" --project todo-app
+
+# APIサービスの作成  
+python -m necrocode.cli plan "GraphQL APIサーバーを作成。ユーザー管理、投稿機能、検索機能を含む" --project graphql-api
+
+# モバイルアプリのバックエンド
+python -m necrocode.cli plan "Flutter用のバックエンドAPI。プッシュ通知、画像アップロード、チャット機能" --project mobile-backend
+```
+
+## プロジェクト構造
+
+```
+kiroween-skeleton-crew/
+├── necrocode/                     # コアモジュール
+│   ├── cli.py                    # CLIインターフェース
+│   ├── parallel_orchestrator.py  # 並列実行調整
+│   ├── worktree_manager.py       # Git Worktree管理
+│   ├── task_planner.py           # タスク計画
+│   ├── task_context.py           # タスクコンテキスト生成
+│   ├── kiro_invoker.py           # Kiro呼び出し
+│   ├── task_registry/            # タスクレジストリ
+│   └── repo_pool/                # リポジトリプール
+├── scripts/                       # 開発・検証スクリプト
+│   ├── necrocode_cli.py          # CLIラッパー
+│   └── verification/             # 検証スクリプト
+├── tests/                         # テストファイル
+├── examples/                      # 使用例
+├── templates/                     # PRテンプレート
+├── docs/archive/                  # 過去のドキュメント
+└── .kiro/                        # Kiro設定・タスク定義
+    ├── steering/                 # アーキテクチャドキュメント
+    ├── tasks/                    # タスク定義
+    └── registry/                 # タスクレジストリ
 ```
 
 ## アーキテクチャ
